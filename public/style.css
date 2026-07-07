@@ -317,7 +317,8 @@ h1 {
 .moves { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; padding: 0 2px; min-height: 0; overflow: hidden; }
 .move { display: flex; align-items: flex-start; gap: 8px; padding: 2px 0; }
 .move + .move { border-top: 1px solid #0002; }
-.move-cost { display: flex; gap: 2px; flex: none; padding-top: 2px; }
+/* 固定列宽（按最多 3 个能量图标预留 17×3 + 2×2 = 55px），使不同图标数的技能名左对齐 */
+.move-cost { display: flex; gap: 2px; flex: none; width: 55px; padding-top: 2px; }
 .energy {
   width: 17px; height: 17px;
   border-radius: 50%;
