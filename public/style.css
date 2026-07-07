@@ -36,6 +36,7 @@ body::before {
   margin: 0 auto;
   padding: 48px 24px 80px;
   position: relative;
+  overflow-x: clip; /* 窄屏卡片等比缩放后，卡框布局盒仍是 366px，裁掉两侧空白避免横向滚动 */
 }
 
 /* ============ 标题区 ============ */
@@ -87,6 +88,7 @@ h1 {
 }
 .seeker input {
   flex: 1;
+  min-width: 0; /* 允许在窄屏收缩，否则默认 size 会把按钮挤出屏幕 */
   padding: 13px 18px;
   font: 14px 'Noto Sans SC', sans-serif;
   color: var(--paper);
@@ -98,6 +100,8 @@ h1 {
 }
 .seeker input:focus { border-color: var(--gold); background: rgba(255, 255, 255, 0.11); }
 .seeker button {
+  flex: none;
+  white-space: nowrap;
   padding: 13px 28px;
   font: 700 15px 'ZCOOL QingKe HuangYou', sans-serif;
   letter-spacing: 3px;
@@ -123,8 +127,13 @@ h1 {
   flex-wrap: wrap;
 }
 
-/* 3D 倾斜容器 */
-.card-tilt { perspective: 1100px; }
+/* 3D 倾斜容器。--m 为窄屏等比缩放系数（由 JS 按可用宽度计算，桌面端为 1）。
+   卡片用 transform: scale 缩放，容器高度按同比例收缩以回收底部空白。 */
+.card-tilt {
+  perspective: 1100px;
+  width: calc(366px * var(--m, 1));
+  height: calc(512px * var(--m, 1));
+}
 
 /* ============ 卡片本体 ============ */
 .card {
@@ -148,6 +157,8 @@ h1 {
   display: flex;
   flex-direction: column;
   user-select: none;
+  transform: scale(var(--m, 1)); /* 窄屏等比缩放，桌面端 scale(1) 无副作用 */
+  transform-origin: top left; /* 从左上角缩放，填满 .card-tilt 的缩放宽度 */
 }
 
 /* —— 稀有度卡框 —— */
@@ -437,12 +448,19 @@ h1 {
 
 /* 卡片入场动画 */
 @keyframes card-reveal {
-  from { opacity: 0; transform: translateY(40px) rotateY(30deg) scale(0.9); }
-  to { opacity: 1; transform: none; }
+  from { opacity: 0; transform: translateY(40px) rotateY(30deg) scale(calc(var(--m, 1) * 0.9)); }
+  to { opacity: 1; transform: scale(var(--m, 1)); }
 }
 .card.reveal { animation: card-reveal 0.7s cubic-bezier(0.22, 1, 0.36, 1); }
 
 @media (max-width: 820px) {
   .arena { flex-direction: column; }
   .dossier { width: 366px; max-width: 100%; }
+}
+
+@media (max-width: 480px) {
+  .stage { padding: 32px 14px 60px; }
+  .seeker { gap: 8px; }
+  .seeker input { padding: 12px 14px; font-size: 13px; }
+  .seeker button { padding: 12px 16px; letter-spacing: 2px; }
 }

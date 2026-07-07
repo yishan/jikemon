@@ -17,6 +17,18 @@ function extractId(raw) {
   return m ? m[1] : raw;
 }
 
+// 卡片固定 366px 设计，窄屏按可用宽度等比缩放（写入 CSS 变量 --m），避免文字重排导致排版变形
+const CARD_W = 366;
+const stageEl = document.querySelector('.stage');
+function fitCard() {
+  const cs = getComputedStyle(stageEl);
+  const avail = stageEl.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const m = Math.min(1, avail / CARD_W);
+  document.documentElement.style.setProperty('--m', m.toFixed(4));
+}
+fitCard();
+window.addEventListener('resize', fitCard);
+
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const id = input.value.trim();
@@ -219,15 +231,37 @@ $('download').addEventListener('click', async () => {
   const prevTransform = cardEl.style.transform;
   cardEl.style.transform = 'none';
   try {
+    // 先确保头像本身完成加载与解码，否则 iOS 上 toSvg 可能在图片内联前跑完，导致导出头像缺失
+    const avatarImg = cardEl.querySelector('.card-art img');
+    if (avatarImg) {
+      if (!avatarImg.complete)
+        await new Promise((r) => {
+          avatarImg.onload = r;
+          avatarImg.onerror = r;
+        });
+      if (avatarImg.decode) await avatarImg.decode().catch(() => {});
+    }
+
     const fontEmbedCSS = await buildFontEmbedCSS();
-    // 只用 toSvg 拿矢量快照，光栅化自己做（库内置的 toPng 在部分环境下会挂起）
+    // 只用 toSvg 拿矢量快照，光栅化自己做（库内置的 toPng 在部分环境下会挂起）。
+    // Safari 首次调用常在图片内联完成前返回，故预热一次再取最终结果。
+    await htmlToImage.toSvg(cardEl, { fontEmbedCSS });
     const svgUrl = await htmlToImage.toSvg(cardEl, { fontEmbedCSS });
+
     const img = new Image();
-    await new Promise((resolve, reject) => {
-      img.onload = resolve;
-      img.onerror = () => reject(new Error('SVG 渲染失败'));
-      img.src = svgUrl;
-    });
+    img.src = svgUrl;
+    // decode() 比 onload 更可靠地保证嵌套图片已就绪；不支持时回退到 onload
+    try {
+      await img.decode();
+    } catch {
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = () => reject(new Error('SVG 渲染失败'));
+      });
+    }
+    // 再等两帧，给 iOS 光栅化 foreignObject 内嵌图片的时间
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+
     const scale = 3;
     const canvas = document.createElement('canvas');
     canvas.width = cardEl.offsetWidth * scale;
