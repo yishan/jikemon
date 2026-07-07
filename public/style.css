@@ -264,12 +264,11 @@ h1 {
   position: relative;
   overflow: hidden;
   background:
-    radial-gradient(circle at 50% 42%, #ffffffd8 0 14%, transparent 52%),
+    radial-gradient(circle at 50% 42%, #ffffffcc 0 12%, transparent 48%),
     repeating-radial-gradient(
       circle at 50% 42%,
-      var(--ripple-strong, #ddd) 0 3px,
-      var(--type-bg, #eee) 3px 16px,
-      var(--ripple-weak, #eee) 16px 30px
+      var(--ripple-strong, #ddd) 0 10px,
+      var(--ripple-weak, #f2f2f2) 10px 22px
     );
 }
 .card-art img {

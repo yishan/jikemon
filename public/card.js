@@ -286,7 +286,7 @@ export function buildCard({ user, posts }) {
     flavor,
     respected,
     respectBonus,
-    cardNo: `No.${String(createdAt.getMonth() + 1).padStart(2, '0')}${String(createdAt.getDate()).padStart(2, '0')} / JIKE`,
+    cardNo: `No.${String(createdAt.getMonth() + 1).padStart(2, '0')}${String(createdAt.getDate()).padStart(2, '0')}`,
     infoLine: `即友宝可梦　关注：${fmt(following)} 只　　获赞：${fmt(liked)} 次`,
     isVerified: !!user.isVerified,
     isSponsor: !!user.isSponsor,

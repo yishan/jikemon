@@ -94,9 +94,10 @@ function render(c) {
   cardEl.dataset.rarity = c.rarity.key;
   cardEl.style.setProperty('--type-color', c.type.color);
   cardEl.style.setProperty('--type-bg', c.type.bg);
-  // 波纹背景的两档混合色，预算成具体 rgb，导出可完整光栅化
-  cardEl.style.setProperty('--ripple-strong', mixWhite(c.type.color, 0.26));
-  cardEl.style.setProperty('--ripple-weak', mixWhite(c.type.color, 0.14));
+  // 波纹背景的两档混合色，预算成具体 rgb（导出可完整光栅化）。
+  // 两档拉开对比：strong 为可见的属性色浅调，weak 近白，交替形成清晰同心环。
+  cardEl.style.setProperty('--ripple-strong', mixWhite(c.type.color, 0.4));
+  cardEl.style.setProperty('--ripple-weak', mixWhite(c.type.color, 0.1));
 
   const badges = [];
   if (c.isVerified) badges.push('<span>✔ 认证</span>');
@@ -151,7 +152,7 @@ function render(c) {
       <p class="card-flavor">${esc(c.flavor)}</p>
       <div class="card-foot">
         <span>${esc(c.cardNo)}</span>
-        <span>illus. okjike</span>
+        <span>illus. JIKÉMON</span>
         <span class="rarity-mark">${c.rarity.key} · ${c.rarity.label}</span>
       </div>
     </div>
@@ -260,8 +261,10 @@ $('download').addEventListener('click', async () => {
     const fontEmbedCSS = await buildFontEmbedCSS();
     // 只用 toSvg 拿矢量快照，光栅化自己做（库内置的 toPng 在部分环境下会挂起）。
     // Safari 首次调用常在图片内联完成前返回，故预热一次再取最终结果。
-    await htmlToImage.toSvg(cardEl, { fontEmbedCSS });
-    const svgUrl = await htmlToImage.toSvg(cardEl, { fontEmbedCSS });
+    // cacheBust: 每次导出强制重新拉取头像，避免切换用户后 html-to-image 复用上一个用户的缓存图。
+    const opts = { fontEmbedCSS, cacheBust: true };
+    await htmlToImage.toSvg(cardEl, opts);
+    const svgUrl = await htmlToImage.toSvg(cardEl, opts);
 
     const img = new Image();
     img.src = svgUrl;
