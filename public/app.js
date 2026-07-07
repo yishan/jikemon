@@ -79,10 +79,24 @@ function proxied(url) {
   return url ? `/api/img?u=${encodeURIComponent(url)}` : '';
 }
 
+// 把十六进制色与白色按比例混合，返回具体 rgb()。
+// 用于预算波纹背景色，避免 CSS color-mix()（html-to-image 导出时无法光栅化 color-mix，会丢背景）。
+function mixWhite(hex, pct) {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  const mix = (c) => Math.round(c * pct + 255 * (1 - pct));
+  return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
+}
+
 function render(c) {
   cardEl.dataset.rarity = c.rarity.key;
   cardEl.style.setProperty('--type-color', c.type.color);
   cardEl.style.setProperty('--type-bg', c.type.bg);
+  // 波纹背景的两档混合色，预算成具体 rgb，导出可完整光栅化
+  cardEl.style.setProperty('--ripple-strong', mixWhite(c.type.color, 0.26));
+  cardEl.style.setProperty('--ripple-weak', mixWhite(c.type.color, 0.14));
 
   const badges = [];
   if (c.isVerified) badges.push('<span>✔ 认证</span>');
@@ -277,6 +291,6 @@ $('download').addEventListener('click', async () => {
   } finally {
     cardEl.style.transform = prevTransform;
     btn.disabled = false;
-    btn.textContent = '导出卡片 PNG';
+    btn.textContent = '导出卡片';
   }
 });

@@ -267,9 +267,9 @@ h1 {
     radial-gradient(circle at 50% 42%, #ffffffd8 0 14%, transparent 52%),
     repeating-radial-gradient(
       circle at 50% 42%,
-      color-mix(in srgb, var(--type-color, #999) 26%, white) 0 3px,
+      var(--ripple-strong, #ddd) 0 3px,
       var(--type-bg, #eee) 3px 16px,
-      color-mix(in srgb, var(--type-color, #999) 14%, white) 16px 30px
+      var(--ripple-weak, #eee) 16px 30px
     );
 }
 .card-art img {
