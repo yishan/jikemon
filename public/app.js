@@ -11,9 +11,9 @@ const tilt = $('tilt');
 const dossier = $('dossier');
 const actions = $('actions');
 
-// 从输入中提取用户 ID：支持完整个人页 URL（任意域名的 /u/<id> 或 /users/<id>）或裸 ID
+// 从输入中提取用户 ID：支持 /u/ /user/ /users/ 路径或裸 ID（仅用作地址栏回退，权威 ID 用响应里的 username）
 function extractId(raw) {
-  const m = raw.match(/\/u(?:sers)?\/([\w-]+)/);
+  const m = raw.match(/\/u(?:sers?)?\/([\w-]+)/);
   return m ? m[1] : raw;
 }
 
@@ -42,8 +42,9 @@ form.addEventListener('submit', async (e) => {
     const card = buildCard(data);
     render(card);
     setStatus('');
-    // 地址栏同步为可分享的直达链接（与即刻个人页同构，仅域名不同）
-    history.replaceState(null, '', `/u/${extractId(id)}`);
+    // 地址栏同步为可分享的直达链接：用响应里的权威 username（okjk.co 短链等也能正确归一）
+    const canonicalId = data.user?.username || extractId(id);
+    history.replaceState(null, '', `/u/${canonicalId}`);
   } catch (err) {
     setStatus('💨 它逃走了：' + err.message);
     arena.hidden = true;

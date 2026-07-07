@@ -52,13 +52,29 @@ function isRateLimited(req) {
   return false;
 }
 
-function fetchUrl(url, headers = {}, redirects = 3) {
+// 即刻域名白名单：短链 okjk.co、m/web.okjike.com。用于 SSRF 防护（含每一跳重定向）。
+function isOkjikeHost(h) {
+  return h === 'okjk.co' || h === 'okjike.com' || h.endsWith('.okjike.com');
+}
+
+// 跟随重定向抓取。okjk.co 短链会 302 到 http:// 的 m.okjike.com，故按协议选择 http/https。
+// hostGuard 若提供，则校验初始及每一跳的目标域名，防止被重定向到站外。
+function fetchUrl(url, headers = {}, redirects = 3, hostGuard = null) {
   return new Promise((resolve, reject) => {
-    https
-      .get(url, { headers: { 'User-Agent': MOBILE_UA, ...headers } }, (res) => {
+    let u;
+    try {
+      u = new URL(url);
+    } catch {
+      return reject(new Error('URL 无效'));
+    }
+    if (hostGuard && !hostGuard(u.hostname)) return reject(new Error('不允许的域名: ' + u.hostname));
+    const mod = u.protocol === 'http:' ? http : https;
+    mod
+      .get(u, { headers: { 'User-Agent': MOBILE_UA, ...headers } }, (res) => {
         if (res.statusCode >= 301 && res.statusCode <= 308 && res.headers.location && redirects > 0) {
           res.resume();
-          return resolve(fetchUrl(new URL(res.headers.location, url).href, headers, redirects - 1));
+          const next = new URL(res.headers.location, u).href;
+          return resolve(fetchUrl(next, headers, redirects - 1, hostGuard));
         }
         const chunks = [];
         res.on('data', (c) => chunks.push(c));
@@ -70,15 +86,36 @@ function fetchUrl(url, headers = {}, redirects = 3) {
   });
 }
 
+// 把用户各种形态的输入解析成一个可抓取的即刻页面 URL：
+// - okjk.co/<短码>：短链里没有 UUID，直接抓取并跟随跳转（会落到 m.okjike.com/users/<uuid>）
+// - web.okjike.com/u/<id> · m.okjike.com/user(s)/<id> · 裸 /u/<id> 路径 · 裸 UUID：
+//   提取出 ID 后统一拼成 m.okjike.com/users/<id>（web 端是 SPA 无 SSR 数据，不能直接抓）
+function resolveProfileUrl(raw) {
+  if (/^https?:\/\//i.test(raw)) {
+    let host;
+    try {
+      host = new URL(raw).hostname;
+    } catch {
+      return { error: '链接无效' };
+    }
+    if (!isOkjikeHost(host)) return { error: '仅支持即刻链接（okjike.com / okjk.co）' };
+    if (host === 'okjk.co') return { url: raw }; // 短链：跟随跳转解析
+  }
+  const m = raw.match(/\/u(?:sers?)?\/([\w-]+)/); // 匹配 /u/ /user/ /users/
+  const id = m ? m[1] : /^https?:\/\//i.test(raw) ? null : raw;
+  if (!id) return { error: '无法从链接中识别用户 ID' };
+  return { url: `https://m.okjike.com/users/${encodeURIComponent(id)}` };
+}
+
 async function handleProfile(query, res) {
   const raw = (query.get('id') || '').trim();
-  // 支持直接粘贴完整个人页 URL
-  const m = raw.match(/\/u(?:sers)?\/([\w-]+)/);
-  const id = m ? m[1] : raw;
-  if (!id) return sendJson(res, 400, { error: '缺少 id 参数' });
+  if (!raw) return sendJson(res, 400, { error: '缺少 id 参数' });
+
+  const resolved = resolveProfileUrl(raw);
+  if (resolved.error) return sendJson(res, 400, { error: resolved.error });
 
   try {
-    const page = await fetchUrl(`https://m.okjike.com/users/${encodeURIComponent(id)}`);
+    const page = await fetchUrl(resolved.url, {}, 4, isOkjikeHost);
     const html = page.body.toString('utf-8');
     const match = html.match(/<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/s);
     if (!match) return sendJson(res, 502, { error: '未能在页面中找到用户数据，可能是用户不存在' });
