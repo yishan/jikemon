@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>即刻梦图鉴 · Jikémon</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=ZCOOL+QingKe+HuangYou&family=Noto+Sans+SC:wght@400;500;700;900&family=M+PLUS+Rounded+1c:wght@700;900&display=swap"
+    rel="stylesheet"
+    crossorigin="anonymous"
+  />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="stage">
+    <header class="masthead">
+      <div class="pokeball" aria-hidden="true"></div>
+      <h1>即刻梦图鉴</h1>
+      <p class="sub">JIKÉMON · 把你的即刻主页变成专属卡牌</p>
+    </header>
+
+    <form id="form" class="seeker">
+      <input
+        id="input"
+        type="text"
+        placeholder="https://web.okjike.com/u/..."
+        spellcheck="false"
+      />
+      <button type="submit" id="go">捕捉！</button>
+    </form>
+
+    <p id="status" class="status" hidden></p>
+
+    <main id="arena" class="arena" hidden>
+      <div class="card-tilt" id="tilt">
+        <article class="card" id="card"><!-- 卡片由 app.js 渲染 --></article>
+      </div>
+
+      <aside class="dossier" id="dossier"><!-- 评分说明由 app.js 渲染 --></aside>
+    </main>
+
+    <div class="actions" id="actions" hidden>
+      <button id="download">导出卡片 PNG</button>
+    </div>
+
+    <footer class="colophon">
+      <p>
+        规则灵感来自 <a href="https://github.com/Younesfdj/gitfut" target="_blank" rel="noreferrer">gitfut</a>
+        ·卡面致敬 Pokémon TCG ·数据来自即刻公开主页
+      </p>
+      <p class="brand">
+        JIKEMON.COM © 2026 · made by
+        <a href="https://web.okjike.com/u/9db4da53-3af2-4214-ab41-7a2a9930685a" target="_blank" rel="noreferrer">yishan</a>
+      </p>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/dist/html-to-image.js"></script>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
