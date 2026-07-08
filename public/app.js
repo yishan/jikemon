@@ -12,6 +12,7 @@ const dossier = $('dossier');
 const actions = $('actions');
 
 let currentCardNo = ''; // 当前卡片编号（如 No.1228），用于导出文件名
+let currentCard = null; // 当前卡片对象，供导出合成读取属性/特质
 
 // 从输入中提取用户 ID：支持 /u/ /user/ /users/ 路径或裸 ID（仅用作地址栏回退，权威 ID 用响应里的 username）
 function extractId(raw) {
@@ -199,6 +200,7 @@ function makeRippleDataUrl(w, h, strong, weak) {
 
 function render(c) {
   currentCardNo = c.cardNo;
+  currentCard = c;
   cardEl.classList.remove('is-mystery');
   openBtn.hidden = true; // 揭晓后收起中央按钮
   cardEl.dataset.rarity = c.rarity.key;
@@ -335,6 +337,72 @@ function esc(s) {
   return String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 }
 
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function waitForImageElement(img, { timeoutMs = 5000, label = '图片', required = false } = {}) {
+  if (img.complete) {
+    if (!required || img.naturalWidth > 0) return Promise.resolve();
+    return Promise.reject(new Error(`${label}加载失败`));
+  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const cleanup = () => {
+      clearTimeout(timer);
+      img.removeEventListener('load', onload);
+      img.removeEventListener('error', onerror);
+    };
+    const settle = (ok, err) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      if (!ok && required) reject(err);
+      else resolve();
+    };
+    const onload = () => settle(true);
+    const onerror = () => settle(false, new Error(`${label}加载失败`));
+    const timer = setTimeout(() => settle(false, new Error(`${label}加载超时`)), timeoutMs);
+    img.addEventListener('load', onload, { once: true });
+    img.addEventListener('error', onerror, { once: true });
+    if (img.complete) settle(!required || img.naturalWidth > 0, new Error(`${label}加载失败`));
+  });
+}
+
+function loadImage(src, { timeoutMs = 8000, label = '图片' } = {}) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    let settled = false;
+    const cleanup = () => {
+      clearTimeout(timer);
+      img.onload = null;
+      img.onerror = null;
+    };
+    const finish = (ok, value) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      if (ok) resolve(img);
+      else reject(value);
+    };
+    const timer = setTimeout(() => finish(false, new Error(`${label}加载超时`)), timeoutMs);
+    img.onload = () => finish(true);
+    img.onerror = () => finish(false, new Error(`${label}加载失败`));
+    img.src = src;
+    if (img.complete && img.naturalWidth > 0) finish(true);
+  });
+}
+
+async function decodeBestEffort(img, timeoutMs = 1500) {
+  if (!img.decode) return;
+  await Promise.race([img.decode(), wait(timeoutMs)]).catch(() => {});
+}
+
+async function waitForFontsReady(timeoutMs = 1500) {
+  if (!document.fonts?.ready) return;
+  await Promise.race([document.fonts.ready, wait(timeoutMs)]).catch(() => {});
+}
+
 /* ---- 3D 倾斜 + 镭射光随鼠标移动 ---- */
 tilt.addEventListener('mousemove', (e) => {
   const r = cardEl.getBoundingClientRect();
@@ -381,6 +449,95 @@ async function buildFontEmbedCSS() {
   return css;
 }
 
+// 把卡片矢量图合成到竖版分享图上：深色背景 + 背光 + 顶部标题 + 底部网址（参考 gitfut）
+async function composeExport(cardImg) {
+  const S = 3; // 输出倍率
+  const CW = 366, CH = 512; // 卡片逻辑尺寸
+  const PAD_X = 74, TOP = 42, TITLE_H = 126, GAP_TOP = 30, GAP_BOT = 40, FOOT_H = 122, BOT = 46;
+  const W = CW + PAD_X * 2;
+  const H = TOP + TITLE_H + GAP_TOP + CH + GAP_BOT + FOOT_H + BOT;
+  const cardX = PAD_X, cardY = TOP + TITLE_H + GAP_TOP;
+  const cx = W / 2, ccx = cardX + CW / 2, ccy = cardY + CH / 2;
+
+  const cv = document.createElement('canvas');
+  cv.width = W * S;
+  cv.height = H * S;
+  const ctx = cv.getContext('2d');
+  ctx.scale(S, S);
+
+  // 背景：与网站一致的深绿 + 上下柔光
+  ctx.fillStyle = '#10241c';
+  ctx.fillRect(0, 0, W, H);
+  const fillRadial = (x, y, r, stops) => {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    stops.forEach(([o, c]) => g.addColorStop(o, c));
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  };
+  fillRadial(cx, -H * 0.05, H * 0.62, [[0, 'rgba(27,58,45,0.95)'], [1, 'rgba(27,58,45,0)']]);
+  fillRadial(W * 0.82, H * 1.05, H * 0.5, [[0, 'rgba(20,43,54,0.85)'], [1, 'rgba(20,43,54,0)']]);
+
+  // 卡片背后的 mesh 背光（与页面 .card-tilt::before 同色）
+  const glows = [
+    [ccx - CW * 0.22, ccy - CH * 0.22, CW * 0.82, 'rgba(232,197,101,0.5)'],
+    [ccx + CW * 0.24, ccy - CH * 0.1, CW * 0.82, 'rgba(69,184,172,0.46)'],
+    [ccx - CW * 0.06, ccy + CH * 0.24, CW * 0.88, 'rgba(167,95,190,0.32)'],
+    [ccx, ccy, CW * 1.15, 'rgba(245,240,220,0.14)'],
+  ];
+  for (const [gx, gy, gr, col] of glows) {
+    fillRadial(gx, gy, gr, [[0, col], [1, col.replace(/[\d.]+\)$/, '0)')]]);
+  }
+
+  // 卡片本体（补一层投影，SVG 导出会裁掉外阴影）
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.55)';
+  ctx.shadowBlur = 34;
+  ctx.shadowOffsetY = 22;
+  ctx.drawImage(cardImg, cardX, cardY, CW, CH);
+  ctx.restore();
+
+  // 文本
+  await waitForFontsReady();
+  ctx.textAlign = 'center';
+  const setLS = (v) => { if ('letterSpacing' in ctx) ctx.letterSpacing = v; };
+
+  // 顶部标题「即可梦图鉴」（金色渐变 + 轻投影）
+  ctx.font = '44px "ZCOOL QingKe HuangYou", sans-serif';
+  setLS('6px');
+  const tg = ctx.createLinearGradient(0, TOP + 22, 0, TOP + 72);
+  tg.addColorStop(0, '#f6e79a');
+  tg.addColorStop(1, '#dca93a');
+  ctx.fillStyle = tg;
+  ctx.shadowColor = 'rgba(0,0,0,0.4)';
+  ctx.shadowBlur = 8;
+  ctx.shadowOffsetY = 3;
+  ctx.fillText('即可梦图鉴', cx, TOP + 62);
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+
+  // 副标题
+  ctx.font = '14px "Noto Sans SC", sans-serif';
+  setLS('3px');
+  ctx.fillStyle = '#9db8a7';
+  ctx.fillText('JIKÉMON · 把你的即刻主页变成专属卡牌', cx, TOP + 100);
+
+  // 底部：特质关键词 + 网址
+  const footY = cardY + CH + GAP_BOT;
+  ctx.font = '900 22px "Noto Sans SC", sans-serif';
+  setLS('2px');
+  ctx.fillStyle = '#c2cedd';
+  ctx.fillText(`${currentCard.type.name}系 · ${currentCard.trait}`, cx, footY + 32);
+
+  ctx.font = '12px "M PLUS Rounded 1c", "Noto Sans SC", sans-serif';
+  setLS('0px');
+  ctx.fillStyle = '#e8c565';
+  ctx.fillText('web.jikemon.com', cx, footY + 82);
+
+  setLS('0px');
+  return cv;
+}
+
 $('download').addEventListener('click', async () => {
   const btn = $('download');
   btn.disabled = true;
@@ -388,15 +545,11 @@ $('download').addEventListener('click', async () => {
   const prevTransform = cardEl.style.transform;
   cardEl.style.transform = 'none';
   try {
-    // 先确保头像本身完成加载与解码（.avatar 才是网络图；.art-ripple 是瞬时 data URI）
+    // 先确保头像本身完成加载；decode 在后台/隐藏页可能被暂停，所以只做带超时的最佳努力。
     const avatarImg = cardEl.querySelector('.card-art .avatar');
     if (avatarImg) {
-      if (!avatarImg.complete)
-        await new Promise((r) => {
-          avatarImg.onload = r;
-          avatarImg.onerror = r;
-        });
-      if (avatarImg.decode) await avatarImg.decode().catch(() => {});
+      await waitForImageElement(avatarImg, { timeoutMs: 3000, label: '头像' });
+      await decodeBestEffort(avatarImg);
     }
 
     const fontEmbedCSS = await buildFontEmbedCSS();
@@ -404,29 +557,17 @@ $('download').addEventListener('click', async () => {
     // 头像已预解码，单次调用即可；cacheBust 强制重新拉取，避免切换用户后复用上个用户的缓存图。
     const svgUrl = await htmlToImage.toSvg(cardEl, { fontEmbedCSS, cacheBust: true });
 
-    const img = new Image();
-    img.src = svgUrl;
-    // decode() 比 onload 更可靠地保证嵌套图片已就绪；不支持时回退到 onload
-    try {
-      await img.decode();
-    } catch {
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = () => reject(new Error('SVG 渲染失败'));
-      });
-    }
-    // 再等两帧，给 iOS 光栅化 foreignObject 内嵌图片的时间
-    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    // SVG decode() 在后台/隐藏页可能不会恢复；onload 对隐藏页更可靠。
+    const img = await loadImage(svgUrl, { timeoutMs: 8000, label: 'SVG' });
+    // 再等一小会，给 iOS 光栅化 foreignObject 内嵌图片的时间
+    // （用 setTimeout 而非 rAF：后台/隐藏标签页 rAF 会被暂停导致卡死）
+    await wait(120);
 
-    const scale = 3;
-    const canvas = document.createElement('canvas');
-    canvas.width = cardEl.offsetWidth * scale;
-    canvas.height = cardEl.offsetHeight * scale;
-    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+    const composed = await composeExport(img);
     const a = document.createElement('a');
     const no = (currentCardNo.match(/\d+/) || [])[0];
     a.download = no ? `jikemon-card-${no}.png` : 'jikemon-card.png';
-    a.href = canvas.toDataURL('image/png');
+    a.href = composed.toDataURL('image/png');
     a.click();
   } catch (err) {
     setStatus('导出失败：' + err.message);

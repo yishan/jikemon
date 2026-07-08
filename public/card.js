@@ -372,7 +372,7 @@ function buildFlavor({ createdAt, type, postsPerDay, picRatio, followers, respec
     ? `面对本命圈子「${weaknessTopic}」毫无抵抗力${resistance ? `，却对${resistance.name}系内容自动免疫` : ''}。`
     : '';
   const praise = respected > 0 ? `曾被夸夸 ${respected} 次，攻击力因此强化。` : '';
-  return `自 ${createdAt.getFullYear()} 年起栖息于即刻森林的${type.name}系即可梦。${freq}。${soft}${praise}其${trait || '魅力'}已吸引 ${fmt(followers)} 只即可梦慕名连接。`;
+  return `自 ${createdAt.getFullYear()} 年起栖息于即刻森林的${type.name}系即可梦。${freq}。${soft}${praise}其${trait || '魅力'}已吸引 ${fmt(followers)} 个即可梦慕名连接。`;
 }
 
 function fmt(v) {
