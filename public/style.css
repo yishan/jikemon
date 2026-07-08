@@ -85,6 +85,8 @@ h1 {
   gap: 10px;
   max-width: 620px;
   margin: 0 auto 28px;
+  position: relative;
+  --catch-progress: 0;
 }
 .seeker input {
   flex: 1;
@@ -99,6 +101,91 @@ h1 {
   transition: border-color 0.2s, background 0.2s;
 }
 .seeker input:focus { border-color: var(--gold); background: rgba(255, 255, 255, 0.11); }
+.seeker.is-catching input {
+  color: transparent;
+  caret-color: transparent;
+  border-color: rgba(232, 197, 101, 0.72);
+  background: rgba(255, 255, 255, 0.06);
+}
+.seeker-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(232, 197, 101, 0.72);
+  border-radius: 999px;
+  color: var(--paper);
+  font: 900 14px 'Noto Sans SC', sans-serif;
+  letter-spacing: 1px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+.seeker.is-catching .seeker-loading {
+  opacity: 1;
+  visibility: visible;
+}
+.seeker-loading__bar {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    linear-gradient(90deg, rgba(248, 223, 140, 0.9), rgba(232, 197, 101, 0.68)),
+    rgba(255, 255, 255, 0.07);
+  transform: scaleX(var(--catch-progress));
+  transform-origin: left center;
+  transition: transform 0.18s ease-out;
+}
+.seeker-loading::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+  transform: translateX(-100%);
+  animation: catch-sheen 1.7s ease-in-out infinite;
+}
+.catch-ball {
+  position: relative;
+  z-index: 2;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border: 2px solid #1c1c1c;
+  border-radius: 50%;
+  background: linear-gradient(to bottom, #ffe411 0 46%, #1c1c1c 46% 54%, #f6f2e9 54% 100%);
+  box-shadow: 0 2px 6px rgba(58, 37, 3, 0.24);
+  animation: catch-spin 0.9s linear infinite;
+}
+.catch-ball::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  transform: translate(-50%, -50%);
+  border: 2px solid #1c1c1c;
+  border-radius: 50%;
+  background: #f6f2e9;
+}
+.seeker-loading__text {
+  position: relative;
+  z-index: 2;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.62), 0 0 8px rgba(0, 0, 0, 0.35);
+}
+@keyframes catch-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes catch-sheen {
+  0% { transform: translateX(-100%); opacity: 0; }
+  30%, 70% { opacity: 1; }
+  100% { transform: translateX(100%); opacity: 0; }
+}
 .seeker button {
   flex: none;
   white-space: nowrap;
@@ -540,6 +627,8 @@ h1 {
   transition: background 0.2s, color 0.2s;
 }
 .actions button:hover { background: var(--gold); color: #3a2503; }
+
+body.is-export-preview-open { overflow: hidden; }
 
 .mobile-export-preview {
   position: fixed;

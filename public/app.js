@@ -14,6 +14,7 @@ const actions = $('actions');
 let currentCardNo = ''; // 当前卡片编号（如 No.1228），用于导出文件名
 let currentCard = null; // 当前卡片对象，供导出合成读取属性/特质
 let inlineExportPreview = null;
+let catchProgressFrame = 0;
 
 // 从输入中提取用户 ID：支持 /u/ /user/ /users/ 路径或裸 ID（仅用作地址栏回退，权威 ID 用响应里的 username）
 function extractId(raw) {
@@ -44,7 +45,7 @@ form.addEventListener('submit', async (e) => {
     input.focus();
     return;
   }
-  setStatus('掷出精灵球，正在捕捉…');
+  startCatchProgress();
   openBtn.disabled = true;
   openBtn.textContent = '捕捉中…';
   try {
@@ -52,12 +53,14 @@ form.addEventListener('submit', async (e) => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || '捕捉失败');
     const card = buildCard(data);
+    await finishCatchProgress();
     render(card);
     setStatus('');
     // 地址栏同步为可分享的直达链接：用响应里的权威 username（okjk.co 短链等也能正确归一）
     const canonicalId = data.user?.username || extractId(id);
     history.replaceState(null, '', `/u/${canonicalId}`);
   } catch (err) {
+    stopCatchProgress();
     setStatus('💨 它逃走了：' + err.message);
     // 回到占位卡，让用户可重试
     renderPlaceholder();
@@ -65,6 +68,7 @@ form.addEventListener('submit', async (e) => {
     dossier.hidden = true;
     actions.hidden = true;
   } finally {
+    stopCatchProgress();
     openBtn.disabled = false;
     openBtn.textContent = '捕捉';
   }
@@ -85,6 +89,42 @@ if (pathId) {
 function setStatus(msg) {
   status.textContent = msg;
   status.hidden = !msg;
+}
+
+function setCatchProgress(value) {
+  form.style.setProperty('--catch-progress', Math.max(0, Math.min(1, value)).toFixed(4));
+}
+
+function startCatchProgress() {
+  cancelAnimationFrame(catchProgressFrame);
+  setStatus('');
+  setCatchProgress(0.02);
+  form.classList.add('is-catching');
+  form.setAttribute('aria-busy', 'true');
+  input.disabled = true;
+  const startedAt = performance.now();
+  const estimatedMs = 7200;
+  const tick = (now) => {
+    const t = Math.min(1, (now - startedAt) / estimatedMs);
+    const eased = 1 - Math.pow(1 - t, 3);
+    setCatchProgress(0.02 + eased * 0.84);
+    if (t < 1 && form.classList.contains('is-catching')) catchProgressFrame = requestAnimationFrame(tick);
+  };
+  catchProgressFrame = requestAnimationFrame(tick);
+}
+
+function finishCatchProgress() {
+  cancelAnimationFrame(catchProgressFrame);
+  setCatchProgress(1);
+  return wait(280);
+}
+
+function stopCatchProgress() {
+  cancelAnimationFrame(catchProgressFrame);
+  form.classList.remove('is-catching');
+  form.removeAttribute('aria-busy');
+  input.disabled = false;
+  setCatchProgress(0);
 }
 
 function energyDots(type, count) {
@@ -306,7 +346,7 @@ function render(c) {
           ? `<dt>夸夸强化</dt><dd>被夸 ${c.respected} 次 → 技能攻击 +${c.respectBonus}</dd>`
           : ''
       }
-      <dt>进化阶段</dt><dd>账龄 ${c.metrics.years} 年 × 影响力 → 综合 ${c.metrics.evoScore}/100 → ${c.stage.label}${
+      <dt>进化阶段</dt><dd>即龄 ${c.metrics.years} 年 × 影响力 → 综合 ${c.metrics.evoScore}/100 → ${c.stage.label}${
         c.stage.mega ? '（6 年+ 且 5000 粉+ 解锁）' : ''
       }</dd>
       <dt>粉丝 / 获赞</dt><dd>${c.metrics.followers} / ${c.metrics.liked} → HP ${c.hp}</dd>
@@ -439,91 +479,11 @@ function canvasToPngBlob(canvas) {
   });
 }
 
-function openMobileExportWindow() {
-  let preview = null;
-  try {
-    preview = window.open('', '_blank');
-  } catch {
-    return null;
-  }
-  if (!preview) return null;
-
-  try {
-    preview.document.open();
-    preview.document.write(`<!doctype html>
-<html lang="zh">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>即可梦图鉴</title>
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      min-height: 100vh;
-      margin: 0;
-      color: #fffdf4;
-      background:
-        radial-gradient(1000px 520px at 50% -12%, #1b3a2d, transparent 70%),
-        #10241c;
-      font-family: -apple-system, BlinkMacSystemFont, "Noto Sans SC", sans-serif;
-    }
-    p {
-      position: sticky;
-      top: 0;
-      z-index: 1;
-      margin: 0;
-      padding: 14px 12px 10px;
-      text-align: center;
-      font-size: 14px;
-      font-weight: 700;
-      background: linear-gradient(to bottom, rgba(16, 36, 28, 0.98), rgba(16, 36, 28, 0.72));
-    }
-    img {
-      display: block;
-      width: min(100vw, 620px);
-      height: auto;
-      margin: 0 auto 32px;
-      -webkit-touch-callout: default;
-      -webkit-user-select: auto;
-      user-select: auto;
-    }
-    img:not([src]) { display: none; }
-  </style>
-</head>
-<body>
-  <p>长按图片保存</p>
-  <img id="exportImage" alt="" />
-</body>
-</html>`);
-    preview.document.close();
-    return preview;
-  } catch {
-    try {
-      preview.close();
-    } catch {}
-    return null;
-  }
-}
-
-function setMobileExportWindowImage(preview, blob) {
-  if (!preview || preview.closed) return false;
-  try {
-    const img = preview.document.getElementById('exportImage');
-    if (!img) return false;
-    const url = preview.URL.createObjectURL(blob);
-    img.src = url;
-    preview.addEventListener('pagehide', () => preview.URL.revokeObjectURL(url), { once: true });
-    preview.focus();
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 function closeInlineExportPreview() {
   if (!inlineExportPreview) return;
   inlineExportPreview.el.remove();
   URL.revokeObjectURL(inlineExportPreview.url);
+  document.body.classList.remove('is-export-preview-open');
   inlineExportPreview = null;
 }
 
@@ -547,9 +507,11 @@ function showInlineExportPreview(blob) {
   const img = document.createElement('img');
   img.src = url;
   img.alt = '';
+  img.decoding = 'async';
 
   el.append(hint, close, img);
   document.body.append(el);
+  document.body.classList.add('is-export-preview-open');
   inlineExportPreview = { el, url };
 }
 
@@ -700,7 +662,6 @@ async function composeExport(cardImg) {
 $('download').addEventListener('click', async () => {
   const btn = $('download');
   const useMobilePreview = shouldUseMobileExportPreview();
-  const mobilePreview = useMobilePreview ? openMobileExportWindow() : null;
   btn.disabled = true;
   btn.textContent = '合成卡牌中…';
   const prevTransform = cardEl.style.transform;
@@ -727,16 +688,11 @@ $('download').addEventListener('click', async () => {
     const composed = await composeExport(img);
     const blob = await canvasToPngBlob(composed);
     if (useMobilePreview) {
-      if (!setMobileExportWindowImage(mobilePreview, blob)) showInlineExportPreview(blob);
+      showInlineExportPreview(blob);
     } else {
       downloadPngBlob(blob, exportFileName());
     }
   } catch (err) {
-    if (mobilePreview && !mobilePreview.closed) {
-      try {
-        mobilePreview.close();
-      } catch {}
-    }
     setStatus('导出失败：' + err.message);
   } finally {
     cardEl.style.transform = prevTransform;

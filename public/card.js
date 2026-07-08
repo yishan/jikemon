@@ -219,14 +219,14 @@ export function buildCard({ user, posts }) {
     'colorless';
   const type = TYPES[typeKey];
 
-  // ---- HP：粉丝 + 获赞 + 账龄，对数缩放，取整到 10 ----
+  // ---- HP：粉丝 + 获赞 + 即龄，对数缩放，取整到 10 ----
   const fScore = clamp(log10(followers + 1) / 5, 0, 1); // 10 万粉丝 = 满分
   const lScore = clamp(log10(liked + 1) / 5.5, 0, 1);
   const aScore = clamp(years / 10, 0, 1);
   const hp = clamp(Math.round((40 + 260 * (0.5 * fScore + 0.3 * lScore + 0.2 * aScore)) / 10) * 10, 40, 300);
 
-  // ---- 进化阶段：账龄 × 影响力 综合分驱动分级；6 年+ 且 5000 粉+ 解锁「超进化」彩蛋 ----
-  // evoScore = 账龄 0.3 + 粉丝 0.6 + 获赞 0.1：影响力主导、时间次之，
+  // ---- 进化阶段：即龄 × 影响力 综合分驱动分级；6 年+ 且 5000 粉+ 解锁「超进化」彩蛋 ----
+  // evoScore = 即龄 0.3 + 粉丝 0.6 + 获赞 0.1：影响力主导、时间次之，
   // 让蹿升的新星靠数据直接进阶，纯熬年头的僵尸号顶不到二阶。
   const evoScore = aScore * 0.3 + fScore * 0.6 + lScore * 0.1;
   const isMega = years >= 6 && followers >= 5000;
@@ -290,7 +290,7 @@ export function buildCard({ user, posts }) {
 
   // ---- 突出特质：由最强维度决定（超进化直接封「魅力」），写进图鉴 ----
   const traitPool = [
-    { name: '稳重', score: aScore, why: '账龄深厚' },              // 账龄
+    { name: '稳重', score: aScore, why: '即龄深厚' },              // 即龄
     { name: '号召力', score: fScore, why: '粉丝众多' },            // 粉丝影响力
     { name: '人气', score: lScore, why: '获赞满满' },              // 获赞
     { name: '活力', score: clamp(postsPerDay / 3, 0, 1), why: '高频发帖' }, // 发帖频率
