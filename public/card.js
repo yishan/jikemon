@@ -225,11 +225,11 @@ export function buildCard({ user, posts }) {
   const aScore = clamp(years / 10, 0, 1);
   const hp = clamp(Math.round((40 + 260 * (0.5 * fScore + 0.3 * lScore + 0.2 * aScore)) / 10) * 10, 40, 300);
 
-  // ---- 进化阶段：账龄 × 影响力 综合分驱动分级；6 年+ 且 万粉+ 解锁「超进化」彩蛋 ----
+  // ---- 进化阶段：账龄 × 影响力 综合分驱动分级；6 年+ 且 5000 粉+ 解锁「超进化」彩蛋 ----
   // evoScore = 账龄 0.3 + 粉丝 0.6 + 获赞 0.1：影响力主导、时间次之，
   // 让蹿升的新星靠数据直接进阶，纯熬年头的僵尸号顶不到二阶。
   const evoScore = aScore * 0.3 + fScore * 0.6 + lScore * 0.1;
-  const isMega = years >= 6 && followers >= 10000;
+  const isMega = years >= 6 && followers >= 5000;
   const stage =
     isMega           ? { label: '超进化', from: '二阶进化', mega: true } :
     evoScore >= 0.58 ? { label: '二阶进化', from: '一阶进化' } :
@@ -312,7 +312,7 @@ export function buildCard({ user, posts }) {
     respected,
     respectBonus,
     cardNo: `No.${String(createdAt.getMonth() + 1).padStart(2, '0')}${String(createdAt.getDate()).padStart(2, '0')}`,
-    infoLine: `即刻梦连接 | 关注 ${fmt(following)} 被关注 ${fmt(followers)} 获赞 ${fmt(liked)}`,
+    infoLine: `即可梦连接 ｜ 关注 ${fmt(following)}　　被关注 ${fmt(followers)}　　获赞 ${fmt(liked)}`,
     isVerified: !!user.isVerified,
     isSponsor: !!user.isSponsor,
     metrics: { followers, liked, years: years.toFixed(1), postsPerDay: postsPerDay.toFixed(1), picRatio, avgLikes: avgLikes.toFixed(1), evoScore: Math.round(evoScore * 100) },
@@ -358,7 +358,7 @@ function buildFlavor({ createdAt, type, postsPerDay, picRatio, followers, respec
     ? `面对本命圈子「${weaknessTopic}」毫无抵抗力${resistance ? `，却对${resistance.name}系内容自动免疫` : ''}。`
     : '';
   const praise = respected > 0 ? `曾被夸夸 ${respected} 次，攻击力因此强化。` : '';
-  return `自 ${createdAt.getFullYear()} 年起栖息于即刻森林的${type.name}系即刻梦。${freq}。${soft}${praise}其魅力已吸引 ${fmt(followers)} 名训练师慕名追随。`;
+  return `自 ${createdAt.getFullYear()} 年起栖息于即刻森林的${type.name}系即可梦。${freq}。${soft}${praise}其魅力已吸引 ${fmt(followers)} 名训练师慕名追随。`;
 }
 
 function fmt(v) {

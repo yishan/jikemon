@@ -227,7 +227,7 @@ function render(c) {
           : ''
       }
       <dt>进化阶段</dt><dd>账龄 ${c.metrics.years} 年 × 影响力 → 综合 ${c.metrics.evoScore}/100 → ${c.stage.label}${
-        c.stage.mega ? '（6 年+ 且 万粉+ 解锁）' : ''
+        c.stage.mega ? '（6 年+ 且 5000 粉+ 解锁）' : ''
       }</dd>
       <dt>粉丝 / 获赞</dt><dd>${c.metrics.followers} / ${c.metrics.liked} → HP ${c.hp}</dd>
       <dt>发帖频率</dt><dd>约 ${c.metrics.postsPerDay} 条 / 天 → 网感 ${'★'.repeat(c.handSpeed)}</dd>
