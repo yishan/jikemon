@@ -133,6 +133,67 @@ h1 {
   perspective: 1100px;
   width: calc(366px * var(--m, 1));
   height: calc(512px * var(--m, 1));
+  position: relative; /* 供中央「抓取」按钮绝对定位 */
+}
+
+/* —— 中央「抓取」按钮：浮在卡片正中，脉冲光圈吸引点击 —— */
+.open-btn {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 20;
+  transform: translate(-50%, -50%);
+  padding: 16px 42px;
+  font: 400 22px 'ZCOOL QingKe HuangYou', sans-serif;
+  letter-spacing: 5px;
+  color: #3a2503;
+  background: linear-gradient(to bottom, #f8df8c, #dfab3c);
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 6px 0 #8a6417, 0 14px 32px rgba(0, 0, 0, 0.5);
+  animation: open-pulse 1.7s ease-in-out infinite;
+}
+.open-btn:active { animation: none; transform: translate(-50%, -48%); box-shadow: 0 2px 0 #8a6417; }
+.open-btn:disabled { animation: none; opacity: 0.85; cursor: wait; letter-spacing: 2px; }
+.open-btn[hidden] { display: none; }
+@keyframes open-pulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    box-shadow: 0 6px 0 #8a6417, 0 14px 32px rgba(0, 0, 0, 0.5), 0 0 0 0 rgba(248, 223, 140, 0.55);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.06);
+    box-shadow: 0 6px 0 #8a6417, 0 16px 36px rgba(0, 0, 0, 0.55), 0 0 0 16px rgba(248, 223, 140, 0);
+  }
+}
+
+/* —— 神秘占位卡：大问号 + 字段淡化 —— */
+.mystery-q {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 900 130px 'M PLUS Rounded 1c', sans-serif;
+  color: #cfc8b6;
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+}
+.card.is-mystery .card-name,
+.card.is-mystery .card-hp,
+.card.is-mystery .move-name,
+.card.is-mystery .move-dmg,
+.card.is-mystery .move-text,
+.card.is-mystery .cb-val,
+.card.is-mystery .card-info,
+.card.is-mystery .card-foot,
+.card.is-mystery .rarity-mark { color: #b3ab99 !important; }
+.card.is-mystery .mystery-hint {
+  color: #7a7059;
+  font-style: normal;
+  text-align: center;
+  font-weight: 700;
+  -webkit-line-clamp: 3;
 }
 
 /* ============ 卡片本体 ============ */
@@ -494,11 +555,13 @@ h1 {
 }
 
 /* 卡片入场动画 */
+/* 开卡揭晓：爆光 + 弹出，像拆开卡包 */
 @keyframes card-reveal {
-  from { opacity: 0; transform: translateY(40px) rotateY(30deg) scale(calc(var(--m, 1) * 0.9)); }
-  to { opacity: 1; transform: scale(var(--m, 1)); }
+  0% { opacity: 0; transform: translateY(8px) scale(calc(var(--m, 1) * 0.8)); filter: brightness(2.6) saturate(1.5); }
+  45% { filter: brightness(1.55); }
+  100% { opacity: 1; transform: scale(var(--m, 1)); filter: none; }
 }
-.card.reveal { animation: card-reveal 0.7s cubic-bezier(0.22, 1, 0.36, 1); }
+.card.reveal { animation: card-reveal 0.75s cubic-bezier(0.22, 1, 0.36, 1); }
 
 @media (max-width: 820px) {
   .arena { flex-direction: column; }

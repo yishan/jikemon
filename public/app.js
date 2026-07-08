@@ -3,7 +3,7 @@ import { buildCard } from './card.js';
 const $ = (id) => document.getElementById(id);
 const form = $('form');
 const input = $('input');
-const go = $('go');
+const openBtn = $('openBtn');
 const status = $('status');
 const arena = $('arena');
 const cardEl = $('card');
@@ -31,12 +31,20 @@ function fitCard() {
 fitCard();
 window.addEventListener('resize', fitCard);
 
+// 中央「抓取」按钮点击即提交表单（等同回车）
+openBtn.addEventListener('click', () => form.requestSubmit());
+
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const id = input.value.trim();
-  if (!id) return;
+  if (!id) {
+    setStatus('先在上方粘贴你的即刻主页链接～');
+    input.focus();
+    return;
+  }
   setStatus('掷出精灵球，正在捕捉…');
-  go.disabled = true;
+  openBtn.disabled = true;
+  openBtn.textContent = '抓取中…';
   try {
     const res = await fetch(`/api/profile?id=${encodeURIComponent(id)}`);
     const data = await res.json();
@@ -49,12 +57,19 @@ form.addEventListener('submit', async (e) => {
     history.replaceState(null, '', `/u/${canonicalId}`);
   } catch (err) {
     setStatus('💨 它逃走了：' + err.message);
-    arena.hidden = true;
+    // 回到占位卡，让用户可重试
+    renderPlaceholder();
+    openBtn.hidden = false;
+    dossier.hidden = true;
     actions.hidden = true;
   } finally {
-    go.disabled = false;
+    openBtn.disabled = false;
+    openBtn.textContent = '抓取';
   }
 });
+
+// 初始：先渲染神秘占位卡（全「?」+ 中央抓取按钮）
+renderPlaceholder();
 
 // 直达链接：访问 /u/<id> 时自动填入并生成。
 // 即刻推广场景：把 web.okjike.com/u/xxx 的域名换成本站域名，落地即出卡。
@@ -79,6 +94,51 @@ function energyDots(type, count) {
 
 function proxied(url) {
   return url ? `/api/img?u=${encodeURIComponent(url)}` : '';
+}
+
+// 抓取前的神秘占位卡：各字段用「?」，中央浮着抓取按钮，吸引用户开卡
+function renderPlaceholder() {
+  cardEl.dataset.rarity = 'C'; // 中性银灰卡框
+  cardEl.classList.add('is-mystery');
+  cardEl.classList.remove('reveal');
+  cardEl.style.setProperty('--type-color', '#b7b1a1');
+  cardEl.style.setProperty('--type-bg', '#efece2');
+  cardEl.style.setProperty('--ripple-strong', '#e2ded1');
+  cardEl.style.setProperty('--ripple-weak', '#f5f2ea');
+  const q = '？？？？？？？？？？？？？？？？？？';
+  cardEl.innerHTML = `
+    <div class="card-inner">
+      <div class="card-top">
+        <span class="stage-chip">？？</span>
+        <h2 class="card-name">? ? ?</h2>
+        <span class="card-hp"><small>HP</small>??</span>
+        <span class="type-orb" style="--type-color:#b7b1a1">?</span>
+      </div>
+      <div class="card-art"><div class="mystery-q">?</div></div>
+      <div class="card-info">即可梦连接 ｜ 关注 ??　　被关注 ??　　获赞 ??</div>
+      <div class="moves">
+        ${[0, 1]
+          .map(
+            () => `
+        <div class="move">
+          <span class="move-cost"><span class="energy" style="--e-color:#b7b1a1">?</span></span>
+          <div class="move-main">
+            <div class="move-head"><span class="move-name">？ ？ ？ ？</span><span class="move-dmg">??</span></div>
+            <p class="move-text">${q}</p>
+          </div>
+        </div>`
+          )
+          .join('')}
+      </div>
+      <div class="card-bottom">
+        <div class="cb-cell"><b>弱点</b><span class="cb-val">?</span></div>
+        <div class="cb-cell"><b>抵抗力</b><span class="cb-val">?</span></div>
+        <div class="cb-cell"><b>网感</b><span class="cb-val">?</span></div>
+      </div>
+      <p class="card-flavor mystery-hint">在上方粘贴你的即刻主页链接，点击中央「抓取」，开启属于你的专属即可梦。</p>
+      <div class="card-foot"><span>No.????</span><span>illus. JIKÉMON</span><span class="rarity-mark">?</span></div>
+    </div>
+  `;
 }
 
 // 把十六进制色与白色按比例混合，返回具体 rgb()。
@@ -125,6 +185,8 @@ function makeRippleDataUrl(w, h, strong, weak) {
 
 function render(c) {
   currentCardNo = c.cardNo;
+  cardEl.classList.remove('is-mystery');
+  openBtn.hidden = true; // 揭晓后收起中央按钮
   cardEl.dataset.rarity = c.rarity.key;
   cardEl.style.setProperty('--type-color', c.type.color);
   cardEl.style.setProperty('--type-bg', c.type.bg);
@@ -248,6 +310,7 @@ function render(c) {
 
   arena.hidden = false;
   actions.hidden = false;
+  dossier.hidden = false;
   cardEl.classList.remove('reveal');
   void cardEl.offsetWidth; // 重新触发入场动画
   cardEl.classList.add('reveal');

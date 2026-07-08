@@ -26,20 +26,20 @@
       <input
         id="input"
         type="text"
-        placeholder="https://web.okjike.com/u/..."
+        placeholder="粘贴即刻主页链接 https://web.okjike.com/u/..."
         spellcheck="false"
       />
-      <button type="submit" id="go">捕捉！</button>
     </form>
 
     <p id="status" class="status" hidden></p>
 
-    <main id="arena" class="arena" hidden>
+    <main id="arena" class="arena">
       <div class="card-tilt" id="tilt">
-        <article class="card" id="card"><!-- 卡片由 app.js 渲染 --></article>
+        <article class="card" id="card"><!-- 占位卡 / 真卡由 app.js 渲染 --></article>
+        <button type="button" id="openBtn" class="open-btn">抓取</button>
       </div>
 
-      <aside class="dossier" id="dossier"><!-- 评分说明由 app.js 渲染 --></aside>
+      <aside class="dossier" id="dossier" hidden><!-- 评分说明由 app.js 渲染 --></aside>
     </main>
 
     <div class="actions" id="actions" hidden>
