@@ -306,7 +306,7 @@ async function buildFontEmbedCSS() {
 $('download').addEventListener('click', async () => {
   const btn = $('download');
   btn.disabled = true;
-  btn.textContent = '冲洗照片中…';
+  btn.textContent = '合成卡牌中…';
   const prevTransform = cardEl.style.transform;
   cardEl.style.transform = 'none';
   try {
@@ -355,6 +355,6 @@ $('download').addEventListener('click', async () => {
   } finally {
     cardEl.style.transform = prevTransform;
     btn.disabled = false;
-    btn.textContent = '导出卡片';
+    btn.textContent = '导出卡牌';
   }
 });

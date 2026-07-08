@@ -466,11 +466,31 @@ h1 {
   color: #6f8a7a;
 }
 .colophon a { color: #9db8a7; }
+/* 三条署名：宽屏一行（· 分隔），窄屏每条独占一行并隐藏分隔点 */
+.colophon .credits {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 8px;
+}
 .colophon .brand {
   margin-top: 10px;
   letter-spacing: 1px;
   color: var(--gold);
   opacity: 0.75;
+}
+.colophon .disclaimer {
+  margin-top: 14px;
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: #4c6157;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+}
+@media (max-width: 600px) {
+  .colophon .credits { flex-direction: column; gap: 4px; }
+  .colophon .credits .sep { display: none; }
 }
 
 /* 卡片入场动画 */
