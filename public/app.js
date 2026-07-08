@@ -13,6 +13,7 @@ const actions = $('actions');
 
 let currentCardNo = ''; // 当前卡片编号（如 No.1228），用于导出文件名
 let currentCard = null; // 当前卡片对象，供导出合成读取属性/特质
+let inlineExportPreview = null;
 
 // 从输入中提取用户 ID：支持 /u/ /user/ /users/ 路径或裸 ID（仅用作地址栏回退，权威 ID 用响应里的 username）
 function extractId(raw) {
@@ -403,6 +404,164 @@ async function waitForFontsReady(timeoutMs = 1500) {
   await Promise.race([document.fonts.ready, wait(timeoutMs)]).catch(() => {});
 }
 
+function shouldUseMobileExportPreview() {
+  const ua = navigator.userAgent || '';
+  const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(ua);
+  const isIPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+  const isCoarseNarrow = matchMedia('(pointer: coarse)').matches && innerWidth <= 900;
+  return isMobileUA || isIPadOS || isCoarseNarrow;
+}
+
+function exportFileName() {
+  const no = (currentCardNo.match(/\d+/) || [])[0];
+  return no ? `jikemon-card-${no}.png` : 'jikemon-card.png';
+}
+
+function canvasToPngBlob(canvas) {
+  return new Promise((resolve, reject) => {
+    if (canvas.toBlob) {
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error('PNG 生成失败'));
+      }, 'image/png');
+      return;
+    }
+
+    try {
+      const [, data] = canvas.toDataURL('image/png').split(',');
+      const bin = atob(data);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      resolve(new Blob([bytes], { type: 'image/png' }));
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+function openMobileExportWindow() {
+  let preview = null;
+  try {
+    preview = window.open('', '_blank');
+  } catch {
+    return null;
+  }
+  if (!preview) return null;
+
+  try {
+    preview.document.open();
+    preview.document.write(`<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>即可梦图鉴</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: #fffdf4;
+      background:
+        radial-gradient(1000px 520px at 50% -12%, #1b3a2d, transparent 70%),
+        #10241c;
+      font-family: -apple-system, BlinkMacSystemFont, "Noto Sans SC", sans-serif;
+    }
+    p {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      margin: 0;
+      padding: 14px 12px 10px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 700;
+      background: linear-gradient(to bottom, rgba(16, 36, 28, 0.98), rgba(16, 36, 28, 0.72));
+    }
+    img {
+      display: block;
+      width: min(100vw, 620px);
+      height: auto;
+      margin: 0 auto 32px;
+      -webkit-touch-callout: default;
+      -webkit-user-select: auto;
+      user-select: auto;
+    }
+    img:not([src]) { display: none; }
+  </style>
+</head>
+<body>
+  <p>长按图片保存</p>
+  <img id="exportImage" alt="" />
+</body>
+</html>`);
+    preview.document.close();
+    return preview;
+  } catch {
+    try {
+      preview.close();
+    } catch {}
+    return null;
+  }
+}
+
+function setMobileExportWindowImage(preview, blob) {
+  if (!preview || preview.closed) return false;
+  try {
+    const img = preview.document.getElementById('exportImage');
+    if (!img) return false;
+    const url = preview.URL.createObjectURL(blob);
+    img.src = url;
+    preview.addEventListener('pagehide', () => preview.URL.revokeObjectURL(url), { once: true });
+    preview.focus();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function closeInlineExportPreview() {
+  if (!inlineExportPreview) return;
+  inlineExportPreview.el.remove();
+  URL.revokeObjectURL(inlineExportPreview.url);
+  inlineExportPreview = null;
+}
+
+function showInlineExportPreview(blob) {
+  closeInlineExportPreview();
+  const url = URL.createObjectURL(blob);
+  const el = document.createElement('div');
+  el.className = 'mobile-export-preview';
+
+  const hint = document.createElement('p');
+  hint.className = 'mobile-export-preview__hint';
+  hint.textContent = '长按图片保存';
+
+  const close = document.createElement('button');
+  close.className = 'mobile-export-preview__close';
+  close.type = 'button';
+  close.setAttribute('aria-label', '关闭预览');
+  close.textContent = '×';
+  close.addEventListener('click', closeInlineExportPreview);
+
+  const img = document.createElement('img');
+  img.src = url;
+  img.alt = '';
+
+  el.append(hint, close, img);
+  document.body.append(el);
+  inlineExportPreview = { el, url };
+}
+
+function downloadPngBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.download = filename;
+  a.href = url;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
 /* ---- 3D 倾斜 + 镭射光随鼠标移动 ---- */
 tilt.addEventListener('mousemove', (e) => {
   const r = cardEl.getBoundingClientRect();
@@ -540,6 +699,8 @@ async function composeExport(cardImg) {
 
 $('download').addEventListener('click', async () => {
   const btn = $('download');
+  const useMobilePreview = shouldUseMobileExportPreview();
+  const mobilePreview = useMobilePreview ? openMobileExportWindow() : null;
   btn.disabled = true;
   btn.textContent = '合成卡牌中…';
   const prevTransform = cardEl.style.transform;
@@ -564,12 +725,18 @@ $('download').addEventListener('click', async () => {
     await wait(120);
 
     const composed = await composeExport(img);
-    const a = document.createElement('a');
-    const no = (currentCardNo.match(/\d+/) || [])[0];
-    a.download = no ? `jikemon-card-${no}.png` : 'jikemon-card.png';
-    a.href = composed.toDataURL('image/png');
-    a.click();
+    const blob = await canvasToPngBlob(composed);
+    if (useMobilePreview) {
+      if (!setMobileExportWindowImage(mobilePreview, blob)) showInlineExportPreview(blob);
+    } else {
+      downloadPngBlob(blob, exportFileName());
+    }
   } catch (err) {
+    if (mobilePreview && !mobilePreview.closed) {
+      try {
+        mobilePreview.close();
+      } catch {}
+    }
     setStatus('导出失败：' + err.message);
   } finally {
     cardEl.style.transform = prevTransform;

@@ -541,6 +541,52 @@ h1 {
 }
 .actions button:hover { background: var(--gold); color: #3a2503; }
 
+.mobile-export-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  overflow: auto;
+  color: var(--paper);
+  background:
+    radial-gradient(1000px 520px at 50% -12%, var(--felt-hi), transparent 70%),
+    var(--felt);
+}
+.mobile-export-preview__hint {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 14px 56px 10px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  background: linear-gradient(to bottom, rgba(16, 36, 28, 0.98), rgba(16, 36, 28, 0.72));
+}
+.mobile-export-preview__close {
+  position: fixed;
+  top: 8px;
+  right: 12px;
+  z-index: 2;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--paper);
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 28px;
+  line-height: 32px;
+  cursor: pointer;
+}
+.mobile-export-preview img {
+  display: block;
+  width: min(100vw, 620px);
+  height: auto;
+  margin: 0 auto 32px;
+  -webkit-touch-callout: default;
+  -webkit-user-select: auto;
+  user-select: auto;
+}
+
 .colophon {
   text-align: center;
   margin-top: 56px;
