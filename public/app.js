@@ -96,6 +96,20 @@ function proxied(url) {
   return url ? `/api/img?u=${encodeURIComponent(url)}` : '';
 }
 
+// 开卡礼花：真卡揭晓瞬间从卡片中心爆开，两侧再补两炮
+function celebrate() {
+  if (typeof confetti !== 'function') return; // CDN 未就绪则静默跳过
+  const r = cardEl.getBoundingClientRect();
+  const x = (r.left + r.width / 2) / window.innerWidth;
+  const y = (r.top + r.height * 0.42) / window.innerHeight;
+  const colors = ['#f5d03e', '#ef5b3a', '#3d9be9', '#4caf50', '#a75fbe', '#45b8ac', '#ffffff'];
+  confetti({ particleCount: 130, spread: 100, startVelocity: 48, origin: { x, y }, colors, scalar: 0.95, ticks: 220 });
+  setTimeout(() => {
+    confetti({ particleCount: 60, angle: 65, spread: 70, startVelocity: 42, origin: { x: Math.max(0, x - 0.22), y }, colors });
+    confetti({ particleCount: 60, angle: 115, spread: 70, startVelocity: 42, origin: { x: Math.min(1, x + 0.22), y }, colors });
+  }, 130);
+}
+
 // 抓取前的神秘占位卡：各字段用「?」，中央浮着抓取按钮，吸引用户开卡
 function renderPlaceholder() {
   cardEl.dataset.rarity = 'C'; // 中性银灰卡框
@@ -314,6 +328,7 @@ function render(c) {
   cardEl.classList.remove('reveal');
   void cardEl.offsetWidth; // 重新触发入场动画
   cardEl.classList.add('reveal');
+  setTimeout(celebrate, 140); // 与卡片弹出同步爆开礼花
 }
 
 function esc(s) {
