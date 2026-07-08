@@ -288,9 +288,21 @@ export function buildCard({ user, posts }) {
   // 手速：发帖越频繁手速越高（日更狂魔 ★★★，潜水党 ★）
   const handSpeed = postsPerDay >= 1.5 ? 3 : postsPerDay >= 0.5 ? 2 : 1;
 
+  // ---- 突出特质：由最强维度决定（超进化直接封「魅力」），写进图鉴 ----
+  const traitPool = [
+    { name: '稳重', score: aScore, why: '账龄深厚' },              // 账龄
+    { name: '号召力', score: fScore, why: '粉丝众多' },            // 粉丝影响力
+    { name: '人气', score: lScore, why: '获赞满满' },              // 获赞
+    { name: '活力', score: clamp(postsPerDay / 3, 0, 1), why: '高频发帖' }, // 发帖频率
+    { name: '实力', score: respectBonus / 50, why: '夸夸加持' },   // 夸夸强化
+  ];
+  const topTrait = [...traitPool].sort((a, b) => b.score - a.score)[0];
+  const trait = isMega ? '魅力' : topTrait.name;
+  const traitWhy = isMega ? '超进化专属' : topTrait.why;
+
   // ---- 图鉴风味文本 ----
   const flavor = buildFlavor({
-    createdAt, type, postsPerDay, picRatio, followers, respected, years, weaknessTopic, resistance,
+    createdAt, type, postsPerDay, picRatio, followers, respected, years, weaknessTopic, resistance, trait,
   });
 
   return {
@@ -309,6 +321,8 @@ export function buildCard({ user, posts }) {
     resistance,
     handSpeed,
     flavor,
+    trait,
+    traitWhy,
     respected,
     respectBonus,
     cardNo: `No.${String(createdAt.getMonth() + 1).padStart(2, '0')}${String(createdAt.getDate()).padStart(2, '0')}`,
@@ -348,7 +362,7 @@ function buildBehaviorMove({ picRatio, originalRatio, avgLikes, postsPerDay, typ
   return { ...base, name: '转发风暴', text: '一键转发引发的信息涟漪，波及在场所有关注者。' };
 }
 
-function buildFlavor({ createdAt, type, postsPerDay, picRatio, followers, respected, years, weaknessTopic, resistance }) {
+function buildFlavor({ createdAt, type, postsPerDay, picRatio, followers, respected, years, weaknessTopic, resistance, trait }) {
   const freq =
     postsPerDay >= 1.5 ? `以日均 ${postsPerDay.toFixed(1)} 条动态的惊人频率活动` :
     postsPerDay >= 0.3 ? '保持着规律的发帖节奏' :
@@ -358,7 +372,7 @@ function buildFlavor({ createdAt, type, postsPerDay, picRatio, followers, respec
     ? `面对本命圈子「${weaknessTopic}」毫无抵抗力${resistance ? `，却对${resistance.name}系内容自动免疫` : ''}。`
     : '';
   const praise = respected > 0 ? `曾被夸夸 ${respected} 次，攻击力因此强化。` : '';
-  return `自 ${createdAt.getFullYear()} 年起栖息于即刻森林的${type.name}系即可梦。${freq}。${soft}${praise}其魅力已吸引 ${fmt(followers)} 名训练师慕名追随。`;
+  return `自 ${createdAt.getFullYear()} 年起栖息于即刻森林的${type.name}系即可梦。${freq}。${soft}${praise}其${trait || '魅力'}已吸引 ${fmt(followers)} 只即可梦慕名连接。`;
 }
 
 function fmt(v) {

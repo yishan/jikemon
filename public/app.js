@@ -219,6 +219,7 @@ function render(c) {
     <h2>即可梦档案</h2>
     <dl>
       <dt>稀有度评分</dt><dd>${c.rarityScore} / 100 → <b>${c.rarity.key}（${c.rarity.label}）</b></dd>
+      <dt>突出特质</dt><dd><b>${c.trait}</b>（${c.traitWhy}）</dd>
       <dt>属性判定</dt><dd>${c.type.icon} ${c.type.name}系（圈子投票 + 简介关键词）</dd>
       <dt>技能匹配</dt><dd>${moveLines}</dd>
       ${
