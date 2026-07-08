@@ -262,13 +262,31 @@ export function buildCard({ user, posts }) {
     });
   }
 
-  // ---- 弱点 / 抵抗 / 手速 ----
+  // ---- 弱点 / 抵抗 / 手速（与即友身份绑定）----
   const counter = COUNTER[typeKey];
+
+  // 弱点 = 本命圈子（发帖最多）：你最容易上钩、一聊就上头的话题。无圈子数据时回退属性克制
+  const topCircle = topics[0] || null;
+  const weakness = topCircle ? TYPES[topCircle.typeKey] : counter.weak ? TYPES[counter.weak] : null;
+  const weaknessTopic = topCircle ? topCircle.name : null;
+
+  // 抵抗力 = 你几乎不碰的系别（免疫领域）；圈子已覆盖全部系别时回退属性克制
+  const presentTypes = new Set(topics.map((t) => t.typeKey));
+  const missingTypes = Object.keys(TYPES).filter(
+    (t) => t !== 'colorless' && t !== typeKey && !presentTypes.has(t)
+  );
+  const resistKey = missingTypes.length
+    ? missingTypes[hashStr(user.username || '') % missingTypes.length]
+    : counter.resist;
+  const resistance = resistKey ? TYPES[resistKey] : null;
+
   // 手速：发帖越频繁手速越高（日更狂魔 ★★★，潜水党 ★）
   const handSpeed = postsPerDay >= 1.5 ? 3 : postsPerDay >= 0.5 ? 2 : 1;
 
   // ---- 图鉴风味文本 ----
-  const flavor = buildFlavor({ createdAt, type, postsPerDay, picRatio, followers, respected, years });
+  const flavor = buildFlavor({
+    createdAt, type, postsPerDay, picRatio, followers, respected, years, weaknessTopic, resistance,
+  });
 
   return {
     name: user.screenName || '神秘即友',
@@ -281,8 +299,9 @@ export function buildCard({ user, posts }) {
     rarity,
     rarityScore: Math.round(rarityScore),
     moves,
-    weakness: counter.weak ? TYPES[counter.weak] : null,
-    resistance: counter.resist ? TYPES[counter.resist] : null,
+    weakness,
+    weaknessTopic,
+    resistance,
     handSpeed,
     flavor,
     respected,
@@ -324,14 +343,17 @@ function buildBehaviorMove({ picRatio, originalRatio, avgLikes, postsPerDay, typ
   return { ...base, name: '转发风暴', text: '一键转发引发的信息涟漪，波及在场所有关注者。' };
 }
 
-function buildFlavor({ createdAt, type, postsPerDay, picRatio, followers, respected, years }) {
+function buildFlavor({ createdAt, type, postsPerDay, picRatio, followers, respected, years, weaknessTopic, resistance }) {
   const freq =
     postsPerDay >= 1.5 ? `以日均 ${postsPerDay.toFixed(1)} 条动态的惊人频率活动` :
     postsPerDay >= 0.3 ? '保持着规律的发帖节奏' :
                          '习惯安静地潜伏观察';
-  const habit = picRatio >= 0.4 ? '出没时常伴随精美的图像' : '偏爱用纯文字留下踪迹';
+  // 弱点=本命圈子、抵抗力=免疫系别，写进图鉴，凸显即友身份
+  const soft = weaknessTopic
+    ? `面对本命圈子「${weaknessTopic}」毫无抵抗力${resistance ? `，却对${resistance.name}系内容自动免疫` : ''}。`
+    : '';
   const praise = respected > 0 ? `曾被夸夸 ${respected} 次，攻击力因此强化。` : '';
-  return `自 ${createdAt.getFullYear()} 年起栖息于即刻森林的${type.name}系即友宝可梦。${freq}，${habit}。${praise}其魅力已吸引 ${fmt(followers)} 名训练师慕名追随。`;
+  return `自 ${createdAt.getFullYear()} 年起栖息于即刻森林的${type.name}系即友宝可梦。${freq}。${soft}${praise}其魅力已吸引 ${fmt(followers)} 名训练师慕名追随。`;
 }
 
 function fmt(v) {

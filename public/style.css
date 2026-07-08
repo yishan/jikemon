@@ -357,10 +357,20 @@ h1 {
   gap: 4px;
   flex: none;
 }
-.cb-cell { flex: 1; text-align: center; }
+.cb-cell { flex: 1; text-align: center; min-width: 0; }
 .cb-cell b { display: block; font-size: 8px; color: #6b6350; letter-spacing: 1px; margin-bottom: 2px; }
 .cb-cell .energy { width: 14px; height: 14px; font-size: 8px; }
 .cb-val { display: inline-flex; align-items: center; gap: 2px; font-weight: 700; }
+.cb-note {
+  display: block;
+  margin-top: 1px;
+  font-size: 7px;
+  color: #8a7f66;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
 
 /* —— 风味文本 & 卡底 —— */
 .card-flavor {

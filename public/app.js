@@ -169,18 +169,20 @@ function render(c) {
       <div class="card-bottom">
         <div class="cb-cell"><b>弱点</b>${
           c.weakness
-            ? `<span class="cb-val"><span class="energy" style="--e-color:${c.weakness.color}">${c.weakness.icon}</span>×2</span>`
+            ? `<span class="cb-val"><span class="energy" style="--e-color:${c.weakness.color}">${c.weakness.icon}</span>×2</span>${
+                c.weaknessTopic ? `<span class="cb-note">${esc(c.weaknessTopic)}</span>` : ''
+              }`
             : '—'
         }</div>
         <div class="cb-cell"><b>抵抗力</b>${
           c.resistance
-            ? `<span class="cb-val"><span class="energy" style="--e-color:${c.resistance.color}">${c.resistance.icon}</span>-30</span>`
+            ? `<span class="cb-val"><span class="energy" style="--e-color:${c.resistance.color}">${c.resistance.icon}</span>-30</span><span class="cb-note">${c.resistance.name}系免疫</span>`
             : '—'
         }</div>
         <div class="cb-cell"><b>手速</b><span class="cb-val">${energyDots(
           { color: '#9e9e9e', icon: '★' },
           c.handSpeed
-        )}</span></div>
+        )}</span><span class="cb-note">${['', '潜水党', '规律党', '日更狂魔'][c.handSpeed] || ''}</span></div>
       </div>
       <p class="card-flavor">${esc(c.flavor)}</p>
       <div class="card-foot">
@@ -225,6 +227,16 @@ function render(c) {
       <dt>入坑年限</dt><dd>${c.metrics.years} 年 → ${c.stage.label}</dd>
       <dt>粉丝 / 获赞</dt><dd>${c.metrics.followers} / ${c.metrics.liked} → HP ${c.hp}</dd>
       <dt>发帖频率</dt><dd>约 ${c.metrics.postsPerDay} 条 / 天 → 手速 ${'★'.repeat(c.handSpeed)}</dd>
+      ${
+        c.weaknessTopic
+          ? `<dt>弱点软肋</dt><dd>本命圈子「${esc(c.weaknessTopic)}」→ 一聊就上头</dd>`
+          : ''
+      }
+      ${
+        c.resistance
+          ? `<dt>免疫领域</dt><dd>几乎不碰 ${c.resistance.icon} ${c.resistance.name}系内容 → 抵抗力 -30</dd>`
+          : ''
+      }
     </dl>
     <p class="verdict">${esc(c.bio || '这位即友很神秘，什么都没写。')}</p>
   `;
