@@ -263,15 +263,18 @@ h1 {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) inset, 0 1px 0 #fff;
   position: relative;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 50% 42%, #ffffffcc 0 12%, transparent 48%),
-    repeating-radial-gradient(
-      circle at 50% 42%,
-      var(--ripple-strong, #ddd) 0 10px,
-      var(--ripple-weak, #f2f2f2) 10px 22px
-    );
+  background: var(--ripple-weak, #f2f2f2); /* 纯色兜底；波纹由 .art-ripple 图片铺满 */
 }
-.card-art img {
+/* 波纹背景用 <img> 而非 CSS 背景：html-to-image 导出时 <img> 能可靠光栅化，CSS 渐变/背景不行 */
+.art-ripple {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  z-index: 0;
+}
+.card-art .avatar {
   position: absolute;
   left: 50%; top: 50%;
   width: 62%;
@@ -279,6 +282,7 @@ h1 {
   transform: translate(-50%, -50%);
   border-radius: 50%;
   object-fit: cover;
+  z-index: 1;
   box-shadow: 0 0 0 4px #fffc, 0 10px 26px rgba(0, 0, 0, 0.35);
 }
 .art-badges {
@@ -286,6 +290,7 @@ h1 {
   right: 6px; top: 6px;
   display: flex;
   gap: 4px;
+  z-index: 2;
 }
 .art-badges span {
   font-size: 9px;

@@ -80,7 +80,6 @@ function proxied(url) {
 }
 
 // 把十六进制色与白色按比例混合，返回具体 rgb()。
-// 用于预算波纹背景色，避免 CSS color-mix()（html-to-image 导出时无法光栅化 color-mix，会丢背景）。
 function mixWhite(hex, pct) {
   const h = hex.replace('#', '');
   const r = parseInt(h.slice(0, 2), 16);
@@ -90,14 +89,45 @@ function mixWhite(hex, pct) {
   return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
 }
 
+// 把同心波纹预渲染成 PNG data URI，作为 card-art 的背景图。
+// 之所以不用 CSS repeating-radial-gradient：浏览器把 SVG foreignObject 光栅化到 canvas 时
+// 无法可靠渲染 CSS 渐变（导出会丢波纹退化为纯色），而位图背景可完整光栅化。
+function makeRippleDataUrl(w, h, strong, weak) {
+  const scale = 3;
+  const cw = Math.max(1, Math.round(w)) * scale;
+  const ch = Math.max(1, Math.round(h)) * scale;
+  const cv = document.createElement('canvas');
+  cv.width = cw;
+  cv.height = ch;
+  const ctx = cv.getContext('2d');
+  const cx = cw / 2;
+  const cy = ch * 0.42; // 与原 CSS 的 circle at 50% 42% 对齐
+  const maxR = Math.hypot(Math.max(cx, cw - cx), Math.max(cy, ch - cy));
+  const band = 11 * scale; // 半周期，环间距 11px
+  // 从外向内画交替色实心圆，形成同心环
+  for (let i = Math.ceil(maxR / band); i >= 0; i--) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, i * band, 0, Math.PI * 2);
+    ctx.fillStyle = i % 2 === 0 ? weak : strong;
+    ctx.fill();
+  }
+  // 中心白色柔光（对应原 CSS 的白色径向叠层）
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR);
+  g.addColorStop(0, 'rgba(255,255,255,0.8)');
+  g.addColorStop(0.12, 'rgba(255,255,255,0.8)');
+  g.addColorStop(0.48, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, cw, ch);
+  return cv.toDataURL('image/png');
+}
+
 function render(c) {
   cardEl.dataset.rarity = c.rarity.key;
   cardEl.style.setProperty('--type-color', c.type.color);
   cardEl.style.setProperty('--type-bg', c.type.bg);
-  // 波纹背景的两档混合色，预算成具体 rgb（导出可完整光栅化）。
-  // 两档拉开对比：strong 为可见的属性色浅调，weak 近白，交替形成清晰同心环。
-  cardEl.style.setProperty('--ripple-strong', mixWhite(c.type.color, 0.4));
-  cardEl.style.setProperty('--ripple-weak', mixWhite(c.type.color, 0.1));
+  // 波纹两档色：strong 为属性色浅调，weak 近白，交替形成清晰同心环
+  const rippleStrong = mixWhite(c.type.color, 0.4);
+  const rippleWeak = mixWhite(c.type.color, 0.1);
 
   const badges = [];
   if (c.isVerified) badges.push('<span>✔ 认证</span>');
@@ -112,7 +142,7 @@ function render(c) {
         <span class="type-orb" style="--type-color:${c.type.color}">${c.type.icon}</span>
       </div>
       <div class="card-art">
-        ${c.avatar ? `<img src="${proxied(c.avatar)}" crossorigin="anonymous" alt="${esc(c.name)}" />` : ''}
+        ${c.avatar ? `<img class="avatar" src="${proxied(c.avatar)}" crossorigin="anonymous" alt="${esc(c.name)}" />` : ''}
         <div class="art-badges">${badges.join('')}</div>
       </div>
       <div class="card-info">${esc(c.infoLine)}</div>
@@ -158,6 +188,19 @@ function render(c) {
     </div>
     <div class="holo"></div>
   `;
+
+  // 用预渲染的波纹位图作 card-art 背景（导出可靠光栅化，替代 CSS 渐变）
+  const artEl = cardEl.querySelector('.card-art');
+  if (artEl) {
+    // 波纹作为 <img> 铺在最底层（object-fit:fill 拉伸到实际尺寸），此处用设计尺寸生成位图
+    const url = makeRippleDataUrl(320, 178, rippleStrong, rippleWeak);
+    const rip = document.createElement('img');
+    rip.className = 'art-ripple';
+    rip.src = url;
+    rip.alt = '';
+    rip.setAttribute('aria-hidden', 'true');
+    artEl.insertBefore(rip, artEl.firstChild);
+  }
 
   const moveLines = c.moves
     .map((m) => {
@@ -247,8 +290,8 @@ $('download').addEventListener('click', async () => {
   const prevTransform = cardEl.style.transform;
   cardEl.style.transform = 'none';
   try {
-    // 先确保头像本身完成加载与解码，否则 iOS 上 toSvg 可能在图片内联前跑完，导致导出头像缺失
-    const avatarImg = cardEl.querySelector('.card-art img');
+    // 先确保头像本身完成加载与解码（.avatar 才是网络图；.art-ripple 是瞬时 data URI）
+    const avatarImg = cardEl.querySelector('.card-art .avatar');
     if (avatarImg) {
       if (!avatarImg.complete)
         await new Promise((r) => {
@@ -260,11 +303,8 @@ $('download').addEventListener('click', async () => {
 
     const fontEmbedCSS = await buildFontEmbedCSS();
     // 只用 toSvg 拿矢量快照，光栅化自己做（库内置的 toPng 在部分环境下会挂起）。
-    // Safari 首次调用常在图片内联完成前返回，故预热一次再取最终结果。
-    // cacheBust: 每次导出强制重新拉取头像，避免切换用户后 html-to-image 复用上一个用户的缓存图。
-    const opts = { fontEmbedCSS, cacheBust: true };
-    await htmlToImage.toSvg(cardEl, opts);
-    const svgUrl = await htmlToImage.toSvg(cardEl, opts);
+    // 头像已预解码，单次调用即可；cacheBust 强制重新拉取，避免切换用户后复用上个用户的缓存图。
+    const svgUrl = await htmlToImage.toSvg(cardEl, { fontEmbedCSS, cacheBust: true });
 
     const img = new Image();
     img.src = svgUrl;
