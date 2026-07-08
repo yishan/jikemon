@@ -216,7 +216,7 @@ function render(c) {
     })
     .join('<br/>');
   dossier.innerHTML = `
-    <h2>训练师档案</h2>
+    <h2>即可梦档案</h2>
     <dl>
       <dt>稀有度评分</dt><dd>${c.rarityScore} / 100 → <b>${c.rarity.key}（${c.rarity.label}）</b></dd>
       <dt>属性判定</dt><dd>${c.type.icon} ${c.type.name}系（圈子投票 + 简介关键词）</dd>
