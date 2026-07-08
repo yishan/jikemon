@@ -139,7 +139,9 @@ function render(c) {
   cardEl.innerHTML = `
     <div class="card-inner">
       <div class="card-top">
-        <span class="stage-chip">${c.stage.label}</span>
+        <span class="stage-chip${c.stage.mega ? ' stage-chip--mega' : ''}">${
+          c.stage.mega ? '✦ ' : ''
+        }${c.stage.label}</span>
         <h2 class="card-name">${esc(c.name)}</h2>
         <span class="card-hp"><small>HP</small>${c.hp}</span>
         <span class="type-orb" style="--type-color:${c.type.color}">${c.type.icon}</span>
@@ -224,7 +226,9 @@ function render(c) {
           ? `<dt>夸夸强化</dt><dd>被夸 ${c.respected} 次 → 技能攻击 +${c.respectBonus}</dd>`
           : ''
       }
-      <dt>入坑年限</dt><dd>${c.metrics.years} 年 → ${c.stage.label}</dd>
+      <dt>入坑年限</dt><dd>${c.metrics.years} 年 → ${c.stage.label}${
+        c.stage.mega ? '（6 年+ 且 万粉+ 解锁）' : ''
+      }</dd>
       <dt>粉丝 / 获赞</dt><dd>${c.metrics.followers} / ${c.metrics.liked} → HP ${c.hp}</dd>
       <dt>发帖频率</dt><dd>约 ${c.metrics.postsPerDay} 条 / 天 → 手速 ${'★'.repeat(c.handSpeed)}</dd>
       ${

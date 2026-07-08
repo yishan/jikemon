@@ -224,6 +224,18 @@ h1 {
   white-space: nowrap;
   align-self: center;
 }
+/* 超进化：万粉老号专属彩蛋徽章，流光金 + 微光晕 */
+.stage-chip--mega {
+  color: #5a3a00;
+  border-color: #d99a2b;
+  background: linear-gradient(100deg, #f7c948, #ffd98a, #ff9d5b, #f7c948);
+  background-size: 200% 100%;
+  box-shadow: 0 0 7px rgba(247, 180, 60, 0.75);
+  animation: mega-shimmer 3s linear infinite;
+}
+@keyframes mega-shimmer {
+  to { background-position: 200% 0; }
+}
 .card-name {
   font-family: 'ZCOOL QingKe HuangYou', sans-serif;
   font-size: 24px;

@@ -225,10 +225,12 @@ export function buildCard({ user, posts }) {
   const aScore = clamp(years / 10, 0, 1);
   const hp = clamp(Math.round((40 + 260 * (0.5 * fScore + 0.3 * lScore + 0.2 * aScore)) / 10) * 10, 40, 300);
 
-  // ---- 进化阶段：账龄 ----
+  // ---- 进化阶段：账龄分级；6 年+ 且 万粉+ 解锁「超进化」彩蛋顶级形态 ----
+  const isMega = years >= 6 && followers >= 10000;
   const stage =
-    years >= 6 ? { label: '二阶进化', from: '资深即友' } :
-    years >= 2 ? { label: '一阶进化', from: '新即友' } :
+    isMega     ? { label: '超进化', from: '二阶进化', mega: true } :
+    years >= 6 ? { label: '二阶进化', from: '一阶进化' } :
+    years >= 2 ? { label: '一阶进化', from: '基础' } :
                  { label: '基础', from: null };
 
   // ---- 稀有度综合评分 ----
@@ -307,7 +309,7 @@ export function buildCard({ user, posts }) {
     respected,
     respectBonus,
     cardNo: `No.${String(createdAt.getMonth() + 1).padStart(2, '0')}${String(createdAt.getDate()).padStart(2, '0')}`,
-    infoLine: `即友宝可梦　关注：${fmt(following)} 只　　获赞：${fmt(liked)} 次`,
+    infoLine: `即可梦　关注：${fmt(following)} 只　　获赞：${fmt(liked)} 次`,
     isVerified: !!user.isVerified,
     isSponsor: !!user.isSponsor,
     metrics: { followers, liked, years: years.toFixed(1), postsPerDay: postsPerDay.toFixed(1), picRatio, avgLikes: avgLikes.toFixed(1) },
@@ -353,7 +355,7 @@ function buildFlavor({ createdAt, type, postsPerDay, picRatio, followers, respec
     ? `面对本命圈子「${weaknessTopic}」毫无抵抗力${resistance ? `，却对${resistance.name}系内容自动免疫` : ''}。`
     : '';
   const praise = respected > 0 ? `曾被夸夸 ${respected} 次，攻击力因此强化。` : '';
-  return `自 ${createdAt.getFullYear()} 年起栖息于即刻森林的${type.name}系即友宝可梦。${freq}。${soft}${praise}其魅力已吸引 ${fmt(followers)} 名训练师慕名追随。`;
+  return `自 ${createdAt.getFullYear()} 年起栖息于即刻森林的${type.name}系即可梦。${freq}。${soft}${praise}其魅力已吸引 ${fmt(followers)} 名训练师慕名追随。`;
 }
 
 function fmt(v) {
