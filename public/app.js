@@ -181,7 +181,7 @@ function render(c) {
             ? `<span class="cb-val"><span class="energy" style="--e-color:${c.resistance.color}">${c.resistance.icon}</span>-30</span><span class="cb-note">${c.resistance.name}系免疫</span>`
             : '—'
         }</div>
-        <div class="cb-cell"><b>手速</b><span class="cb-val">${energyDots(
+        <div class="cb-cell"><b>网感</b><span class="cb-val">${energyDots(
           { color: '#9e9e9e', icon: '★' },
           c.handSpeed
         )}</span><span class="cb-note">${['', '潜水党', '规律党', '日更狂魔'][c.handSpeed] || ''}</span></div>
@@ -226,11 +226,11 @@ function render(c) {
           ? `<dt>夸夸强化</dt><dd>被夸 ${c.respected} 次 → 技能攻击 +${c.respectBonus}</dd>`
           : ''
       }
-      <dt>入坑年限</dt><dd>${c.metrics.years} 年 → ${c.stage.label}${
+      <dt>进化阶段</dt><dd>账龄 ${c.metrics.years} 年 × 影响力 → 综合 ${c.metrics.evoScore}/100 → ${c.stage.label}${
         c.stage.mega ? '（6 年+ 且 万粉+ 解锁）' : ''
       }</dd>
       <dt>粉丝 / 获赞</dt><dd>${c.metrics.followers} / ${c.metrics.liked} → HP ${c.hp}</dd>
-      <dt>发帖频率</dt><dd>约 ${c.metrics.postsPerDay} 条 / 天 → 手速 ${'★'.repeat(c.handSpeed)}</dd>
+      <dt>发帖频率</dt><dd>约 ${c.metrics.postsPerDay} 条 / 天 → 网感 ${'★'.repeat(c.handSpeed)}</dd>
       ${
         c.weaknessTopic
           ? `<dt>弱点软肋</dt><dd>本命圈子「${esc(c.weaknessTopic)}」→ 一聊就上头</dd>`
