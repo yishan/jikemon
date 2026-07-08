@@ -11,6 +11,8 @@ const tilt = $('tilt');
 const dossier = $('dossier');
 const actions = $('actions');
 
+let currentCardNo = ''; // 当前卡片编号（如 No.1228），用于导出文件名
+
 // 从输入中提取用户 ID：支持 /u/ /user/ /users/ 路径或裸 ID（仅用作地址栏回退，权威 ID 用响应里的 username）
 function extractId(raw) {
   const m = raw.match(/\/u(?:sers?)?\/([\w-]+)/);
@@ -122,6 +124,7 @@ function makeRippleDataUrl(w, h, strong, weak) {
 }
 
 function render(c) {
+  currentCardNo = c.cardNo;
   cardEl.dataset.rarity = c.rarity.key;
   cardEl.style.setProperty('--type-color', c.type.color);
   cardEl.style.setProperty('--type-bg', c.type.bg);
@@ -326,7 +329,8 @@ $('download').addEventListener('click', async () => {
     canvas.height = cardEl.offsetHeight * scale;
     canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
     const a = document.createElement('a');
-    a.download = 'jikemon-card.png';
+    const no = (currentCardNo.match(/\d+/) || [])[0];
+    a.download = no ? `jikemon-card-${no}.png` : 'jikemon-card.png';
     a.href = canvas.toDataURL('image/png');
     a.click();
   } catch (err) {
