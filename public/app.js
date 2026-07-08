@@ -177,9 +177,9 @@ function render(c) {
             ? `<span class="cb-val"><span class="energy" style="--e-color:${c.resistance.color}">${c.resistance.icon}</span>-30</span>`
             : '—'
         }</div>
-        <div class="cb-cell"><b>撤退</b><span class="cb-val">${energyDots(
+        <div class="cb-cell"><b>手速</b><span class="cb-val">${energyDots(
           { color: '#9e9e9e', icon: '★' },
-          c.retreat
+          c.handSpeed
         )}</span></div>
       </div>
       <p class="card-flavor">${esc(c.flavor)}</p>
@@ -224,7 +224,7 @@ function render(c) {
       }
       <dt>入坑年限</dt><dd>${c.metrics.years} 年 → ${c.stage.label}</dd>
       <dt>粉丝 / 获赞</dt><dd>${c.metrics.followers} / ${c.metrics.liked} → HP ${c.hp}</dd>
-      <dt>发帖频率</dt><dd>约 ${c.metrics.postsPerDay} 条 / 天 → 撤退 ×${c.retreat}</dd>
+      <dt>发帖频率</dt><dd>约 ${c.metrics.postsPerDay} 条 / 天 → 手速 ${'★'.repeat(c.handSpeed)}</dd>
     </dl>
     <p class="verdict">${esc(c.bio || '这位即友很神秘，什么都没写。')}</p>
   `;

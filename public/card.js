@@ -262,9 +262,10 @@ export function buildCard({ user, posts }) {
     });
   }
 
-  // ---- 弱点 / 抵抗 / 撤退 ----
+  // ---- 弱点 / 抵抗 / 手速 ----
   const counter = COUNTER[typeKey];
-  const retreat = postsPerDay >= 1.5 ? 3 : postsPerDay >= 0.5 ? 2 : 1; // 越活跃越难撤退
+  // 手速：发帖越频繁手速越高（日更狂魔 ★★★，潜水党 ★）
+  const handSpeed = postsPerDay >= 1.5 ? 3 : postsPerDay >= 0.5 ? 2 : 1;
 
   // ---- 图鉴风味文本 ----
   const flavor = buildFlavor({ createdAt, type, postsPerDay, picRatio, followers, respected, years });
@@ -282,7 +283,7 @@ export function buildCard({ user, posts }) {
     moves,
     weakness: counter.weak ? TYPES[counter.weak] : null,
     resistance: counter.resist ? TYPES[counter.resist] : null,
-    retreat,
+    handSpeed,
     flavor,
     respected,
     respectBonus,
