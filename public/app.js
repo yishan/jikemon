@@ -44,7 +44,7 @@ form.addEventListener('submit', async (e) => {
   }
   setStatus('掷出精灵球，正在捕捉…');
   openBtn.disabled = true;
-  openBtn.textContent = '抓取中…';
+  openBtn.textContent = '捕捉中…';
   try {
     const res = await fetch(`/api/profile?id=${encodeURIComponent(id)}`);
     const data = await res.json();
@@ -64,7 +64,7 @@ form.addEventListener('submit', async (e) => {
     actions.hidden = true;
   } finally {
     openBtn.disabled = false;
-    openBtn.textContent = '抓取';
+    openBtn.textContent = '捕捉';
   }
 });
 
@@ -149,7 +149,7 @@ function renderPlaceholder() {
         <div class="cb-cell"><b>抵抗力</b><span class="cb-val">?</span></div>
         <div class="cb-cell"><b>网感</b><span class="cb-val">?</span></div>
       </div>
-      <p class="card-flavor mystery-hint">在上方粘贴你的即刻主页链接，点击中央「抓取」，开启属于你的专属即可梦。</p>
+      <p class="card-flavor mystery-hint">在上方粘贴你的即刻主页链接，点击中央「捕捉」，开启属于你的专属即可梦。</p>
       <div class="card-foot"><span>No.????</span><span>illus. JIKÉMON</span><span class="rarity-mark">?</span></div>
     </div>
   `;

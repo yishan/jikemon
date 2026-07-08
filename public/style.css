@@ -133,7 +133,27 @@ h1 {
   perspective: 1100px;
   width: calc(366px * var(--m, 1));
   height: calc(512px * var(--m, 1));
-  position: relative; /* 供中央「抓取」按钮绝对定位 */
+  position: relative; /* 供中央「捕捉」按钮绝对定位 */
+}
+
+/* —— 卡片背后的 mesh 光效：多色柔光缓慢漂移，衬托卡片 —— */
+.card-tilt::before {
+  content: '';
+  position: absolute;
+  inset: -24% -20%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(40% 44% at 28% 24%, rgba(232, 197, 101, 0.5), transparent 70%),
+    radial-gradient(44% 48% at 76% 38%, rgba(69, 184, 172, 0.46), transparent 70%),
+    radial-gradient(52% 56% at 44% 74%, rgba(167, 95, 190, 0.34), transparent 74%),
+    radial-gradient(78% 68% at 50% 50%, rgba(245, 240, 220, 0.18), transparent 76%);
+  filter: blur(40px);
+  animation: glow-drift 9s ease-in-out infinite alternate;
+}
+@keyframes glow-drift {
+  from { transform: translate(-2.5%, -1.5%) scale(1); opacity: 0.85; }
+  to { transform: translate(2.5%, 1.5%) scale(1.07); opacity: 1; }
 }
 
 /* —— 中央「抓取」按钮：浮在卡片正中，脉冲光圈吸引点击 —— */
@@ -212,6 +232,7 @@ h1 {
     0 24px 60px rgba(0, 0, 0, 0.55);
   color: var(--ink);
   position: relative;
+  z-index: 1; /* 盖在背后的 mesh 光效之上 */
   overflow: hidden;
   transform-style: preserve-3d;
   transition: transform 0.15s ease-out;
