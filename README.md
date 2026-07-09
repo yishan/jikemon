@@ -8,11 +8,12 @@
 ## 运行
 
 ```bash
+npm install
 node server.js
 # 打开 http://localhost:4399，粘贴即刻个人页链接（如 https://web.okjike.com/u/xxxx）
 ```
 
-零依赖，只需 Node.js ≥ 18。
+需要 Node.js ≥ 18。服务端使用 `@resvg/resvg-js` 将 SVG 模板渲染为社交平台更稳妥的 PNG。
 
 ## 直达链接（改域名即出卡）
 
@@ -28,6 +29,16 @@ https://web.okjike.com/u/9db4da53-…   →   https://web.jikemon.com/u/9db4da53
 始终展示 `web.okjike.com/u/…` 格式，让用户一眼明白该粘贴什么。
 
 `/api/profile` 有按 IP 的频率限制（每分钟 10 次，内存滑动窗口），超限返回 429。
+
+## 社交分享图（OG Image）
+
+页面会自动注入 Open Graph / Twitter Card meta：
+
+- `/` 使用默认横版分享图：`/og/default.png`
+- `/u/<用户ID>` 使用专属分享图：`/og/u/<用户ID>.png`
+
+OG 图为 1200×630 PNG，复用 `card.js` 的卡片转换规则，展示昵称、头像、属性、HP、稀有度、
+进化阶段和两条技能。生成失败时会回退到默认模板，避免社交平台抓到错误页。
 
 ## 数据来源
 
@@ -75,7 +86,8 @@ SR / UR 卡带有随鼠标移动的镭射闪光（color-dodge 混合），所有
 ## 项目结构
 
 ```
-server.js          零依赖 Node 服务器（静态托管 + 数据/图片代理）
+server.js          Node 服务器（静态托管 + 数据/图片代理 + OG 图片生成）
+package.json       服务端依赖与启动脚本
 public/
   index.html       页面骨架
   card.js          转换规则（即刻数据 → 卡片属性）
