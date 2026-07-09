@@ -1,4 +1,4 @@
-import { buildCard } from './card.js';
+import { buildCard, buildDuel } from './card.js';
 
 const $ = (id) => document.getElementById(id);
 const form = $('form');
@@ -13,9 +13,12 @@ const actions = $('actions');
 
 let currentCardNo = ''; // 当前卡片编号（如 No.1228），用于导出文件名
 let currentCard = null; // 当前卡片对象，供导出合成读取属性/特质
+let currentDuel = null; // 当前 VS 对战对象
+let currentMode = 'card';
 let inlineExportPreview = null;
 let exportPreviewViewportContent = null;
 let catchProgressFrame = 0;
+let duelRevealTimers = [];
 
 // 从输入中提取用户 ID：支持 /u/ /user/ /users/ 路径或裸 ID（仅用作地址栏回退，权威 ID 用响应里的 username）
 function extractId(raw) {
@@ -75,16 +78,26 @@ form.addEventListener('submit', async (e) => {
   }
 });
 
-// 初始：先渲染神秘占位卡（全「?」+ 中央抓取按钮）
-renderPlaceholder();
+initRoute();
 
-// 直达链接：访问 /u/<id> 时自动填入并生成。
-// 即刻推广场景：把 web.okjike.com/u/xxx 的域名换成本站域名，落地即出卡。
-const pathId = location.pathname.match(/^\/u\/([\w-]+)/);
-if (pathId) {
-  // 输入框始终展示即刻原始链接的样子，让用户明白粘贴什么
-  input.value = `https://web.okjike.com/u/${pathId[1]}`;
-  form.requestSubmit();
+function initRoute() {
+  const duelPath = location.pathname.match(/^\/u\/([\w-]+)\/vs\/([\w-]+)$/);
+  if (duelPath) {
+    loadDuelRoute(duelPath[1], duelPath[2]);
+    return;
+  }
+
+  // 初始：先渲染神秘占位卡（全「?」+ 中央抓取按钮）
+  renderPlaceholder();
+
+  // 直达链接：访问 /u/<id> 时自动填入并生成。
+  // 即刻推广场景：把 web.okjike.com/u/xxx 的域名换成本站域名，落地即出卡。
+  const pathId = location.pathname.match(/^\/u\/([\w-]+)$/);
+  if (pathId) {
+    // 输入框始终展示即刻原始链接的样子，让用户明白粘贴什么
+    input.value = `https://web.okjike.com/u/${pathId[1]}`;
+    form.requestSubmit();
+  }
 }
 
 function setStatus(msg) {
@@ -240,23 +253,12 @@ function makeRippleDataUrl(w, h, strong, weak) {
   return cv.toDataURL('image/png');
 }
 
-function render(c) {
-  currentCardNo = c.cardNo;
-  currentCard = c;
-  cardEl.classList.remove('is-mystery');
-  openBtn.hidden = true; // 揭晓后收起中央按钮
-  cardEl.dataset.rarity = c.rarity.key;
-  cardEl.style.setProperty('--type-color', c.type.color);
-  cardEl.style.setProperty('--type-bg', c.type.bg);
-  // 波纹两档色：strong 为属性色浅调，weak 近白，交替形成清晰同心环
-  const rippleStrong = mixWhite(c.type.color, 0.4);
-  const rippleWeak = mixWhite(c.type.color, 0.1);
-
+function cardMarkup(c) {
   const badges = [];
   if (c.isVerified) badges.push('<span>✔ 认证</span>');
   if (c.isSponsor) badges.push('<span>♦ 会员</span>');
 
-  cardEl.innerHTML = `
+  return `
     <div class="card-inner">
       <div class="card-top">
         <span class="stage-chip${c.stage.mega ? ' stage-chip--mega' : ''}">${
@@ -315,9 +317,21 @@ function render(c) {
     </div>
     <div class="holo"></div>
   `;
+}
+
+function renderCardElement(el, c, { reveal = false } = {}) {
+  el.classList.remove('is-mystery');
+  el.dataset.rarity = c.rarity.key;
+  el.style.setProperty('--type-color', c.type.color);
+  el.style.setProperty('--type-bg', c.type.bg);
+  el.innerHTML = cardMarkup(c);
+
+  // 波纹两档色：strong 为属性色浅调，weak 近白，交替形成清晰同心环
+  const rippleStrong = mixWhite(c.type.color, 0.4);
+  const rippleWeak = mixWhite(c.type.color, 0.1);
 
   // 用预渲染的波纹位图作 card-art 背景（导出可靠光栅化，替代 CSS 渐变）
-  const artEl = cardEl.querySelector('.card-art');
+  const artEl = el.querySelector('.card-art');
   if (artEl) {
     // 波纹作为 <img> 铺在最底层（object-fit:fill 拉伸到实际尺寸），此处用设计尺寸生成位图
     const url = makeRippleDataUrl(320, 178, rippleStrong, rippleWeak);
@@ -329,6 +343,14 @@ function render(c) {
     artEl.insertBefore(rip, artEl.firstChild);
   }
 
+  if (reveal) {
+    el.classList.remove('reveal');
+    void el.offsetWidth; // 重新触发入场动画
+    el.classList.add('reveal');
+  }
+}
+
+function renderDossier(c) {
   const moveLines = c.moves
     .map((m) => {
       const t = m.type || c.type;
@@ -365,14 +387,237 @@ function render(c) {
     </dl>
     <p class="verdict">${esc(c.bio || '这位即友很神秘，什么都没写。')}</p>
   `;
+}
+
+function render(c) {
+  currentMode = 'card';
+  currentCardNo = c.cardNo;
+  currentCard = c;
+  currentDuel = null;
+  openBtn.hidden = true; // 揭晓后收起中央按钮
+  renderCardElement(cardEl, c, { reveal: true });
+  renderDossier(c);
 
   arena.hidden = false;
   actions.hidden = false;
   dossier.hidden = false;
-  cardEl.classList.remove('reveal');
-  void cardEl.offsetWidth; // 重新触发入场动画
-  cardEl.classList.add('reveal');
   setTimeout(celebrate, 140); // 与卡片弹出同步爆开礼花
+}
+
+async function loadDuelRoute(leftId, rightId) {
+  currentMode = 'duel';
+  document.body.classList.add('is-duel-page');
+  const titleEl = document.querySelector('.masthead h1');
+  const subEl = document.querySelector('.masthead .sub');
+  if (titleEl) titleEl.textContent = '即可梦决斗';
+  if (subEl) subEl.textContent = 'JIKÉMON DUEL';
+  form.hidden = true;
+  actions.hidden = true;
+  dossier.hidden = true;
+  openBtn.hidden = true;
+  arena.hidden = false;
+  arena.className = 'arena duel-arena';
+  arena.innerHTML = `
+    <section class="duel-loading" role="status" aria-live="polite">
+      <span class="catch-ball" aria-hidden="true"></span>
+      <strong>正在捕捉双方即可梦</strong>
+    </section>
+  `;
+  setStatus('');
+
+  try {
+    const res = await fetch(`/api/duel?left=${encodeURIComponent(leftId)}&right=${encodeURIComponent(rightId)}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '对战加载失败');
+
+    const left = buildCard(data.left);
+    const right = buildCard(data.right);
+    const duel = buildDuel(left, right);
+    currentDuel = duel;
+    currentCard = null;
+    currentCardNo = '';
+
+    const canonicalLeft = data.left?.user?.username || leftId;
+    const canonicalRight = data.right?.user?.username || rightId;
+    history.replaceState(null, '', `/u/${canonicalLeft}/vs/${canonicalRight}`);
+    document.title = `${left.name} vs ${right.name} · 即可梦决斗`;
+    renderDuel(duel);
+  } catch (err) {
+    arena.innerHTML = `
+      <section class="duel-loading duel-loading--error" role="status">
+        <strong>对战加载失败</strong>
+        <span>${esc(err.message)}</span>
+      </section>
+    `;
+  }
+}
+
+function renderDuel(duel) {
+  clearDuelRevealTimers();
+  const winnerName = duel.winner ? duel[duel.winner].name : '平局';
+  const winnerClass = duel.winner ? `duel-board--${duel.winner}` : 'duel-board--draw';
+  arena.className = 'arena duel-arena';
+  arena.innerHTML = `
+    <section class="duel-shell">
+      <div class="duel-card-side duel-card-side--left">
+        <div class="card-tilt duel-tilt" id="duelLeftTilt">
+          <article class="card duel-card" id="duelLeftCard"></article>
+        </div>
+        <div class="duel-card-meta">
+          <strong>${esc(duel.left.name)}</strong>
+          <span>${duel.left.type.icon} ${duel.left.type.name}系 · ${duel.left.rarity.key}</span>
+        </div>
+      </div>
+
+      <section class="duel-board ${winnerClass}" aria-label="即可梦决斗结果">
+        <p class="duel-kicker">Final Result</p>
+        <div class="duel-score">
+          <span id="duelScoreLeft">0</span>
+          <b>V.S.</b>
+          <span id="duelScoreRight">0</span>
+        </div>
+        <h2 id="duelWinnerTitle">逐项判定中</h2>
+        <p class="duel-verdict" id="duelVerdict">逐项揭晓双方优势。</p>
+        <div class="duel-rows">
+          ${duel.rows.map((row, i) => duelRowMarkup(row, i)).join('')}
+        </div>
+        <dl class="duel-receipts">
+          ${duel.receipts
+            .map(
+              (r) => `
+            <div class="duel-receipt-row">
+              <dd class="duel-receipt-value duel-receipt-value--left">${esc(r.left)}</dd>
+              <dt>${esc(r.label)}</dt>
+              <dd class="duel-receipt-value duel-receipt-value--right">${esc(r.right)}</dd>
+            </div>`
+            )
+            .join('')}
+        </dl>
+      </section>
+
+      <div class="duel-card-side duel-card-side--right">
+        <div class="card-tilt duel-tilt" id="duelRightTilt">
+          <article class="card duel-card" id="duelRightCard"></article>
+        </div>
+        <div class="duel-card-meta">
+          <strong>${esc(duel.right.name)}</strong>
+          <span>${duel.right.type.icon} ${duel.right.type.name}系 · ${duel.right.rarity.key}</span>
+        </div>
+      </div>
+    </section>
+  `;
+
+  const leftCard = $('duelLeftCard');
+  const rightCard = $('duelRightCard');
+  renderCardElement(leftCard, duel.left, { reveal: true });
+  renderCardElement(rightCard, duel.right, { reveal: true });
+  attachTilt($('duelLeftTilt'), leftCard);
+  attachTilt($('duelRightTilt'), rightCard);
+  playDuelReveal(duel, { winnerName });
+}
+
+function duelRowMarkup(row, index) {
+  return `
+    <div class="duel-row" data-winner="${row.winner}" data-row-index="${index}">
+      <div class="duel-row-head">
+        <span>${esc(row.leftText)}</span>
+        <strong>${esc(row.label)}</strong>
+        <span>${esc(row.rightText)}</span>
+      </div>
+      <div class="duel-share" style="--left-share:${row.leftPct}%; --right-share:${row.rightPct}%;" aria-hidden="true">
+        <i class="duel-share__left"></i>
+        <i class="duel-share__right"></i>
+      </div>
+    </div>
+  `;
+}
+
+function clearDuelRevealTimers() {
+  duelRevealTimers.forEach((timer) => clearTimeout(timer));
+  duelRevealTimers = [];
+}
+
+function playDuelReveal(duel, { winnerName }) {
+  const rows = [...document.querySelectorAll('.duel-row')];
+  const leftScoreEl = $('duelScoreLeft');
+  const rightScoreEl = $('duelScoreRight');
+  const titleEl = $('duelWinnerTitle');
+  const verdictEl = $('duelVerdict');
+  if (!rows.length || !leftScoreEl || !rightScoreEl) return;
+
+  const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  if (prefersReducedMotion) {
+    rows.forEach((row) => row.classList.add('is-resolved'));
+    leftScoreEl.textContent = duel.score.left;
+    rightScoreEl.textContent = duel.score.right;
+    if (titleEl) titleEl.textContent = winnerName;
+    if (verdictEl) verdictEl.textContent = duel.verdict;
+    return;
+  }
+
+  let leftScore = 0;
+  let rightScore = 0;
+  const stepMs = 760;
+
+  duel.rows.forEach((row, index) => {
+    const timer = setTimeout(() => {
+      rows.forEach((el) => el.classList.remove('is-current'));
+      const el = rows[index];
+      if (!el) return;
+
+      if (row.winner === 'left') leftScore += 1;
+      if (row.winner === 'right') rightScore += 1;
+      leftScoreEl.textContent = leftScore;
+      rightScoreEl.textContent = rightScore;
+      if (row.winner === 'left') bumpScore(leftScoreEl);
+      if (row.winner === 'right') bumpScore(rightScoreEl);
+      el.classList.add('is-current', 'is-resolved');
+
+      if (titleEl) {
+        if (row.winner === 'draw') titleEl.textContent = `${row.label} 打平`;
+        else titleEl.textContent = `${row.winner === 'left' ? duel.left.name : duel.right.name} 拿下${row.label}`;
+      }
+      if (verdictEl) {
+        verdictEl.textContent =
+          row.winner === 'draw'
+            ? `双方在「${row.label}」打平。`
+            : `${row.winner === 'left' ? duel.left.name : duel.right.name} 在「${row.label}」取得优势。`;
+      }
+    }, stepMs * index + 240);
+    duelRevealTimers.push(timer);
+  });
+
+  const doneTimer = setTimeout(() => {
+    rows.forEach((el) => el.classList.remove('is-current'));
+    leftScoreEl.textContent = duel.score.left;
+    rightScoreEl.textContent = duel.score.right;
+    if (titleEl) titleEl.textContent = winnerName;
+    if (verdictEl) verdictEl.textContent = duel.verdict;
+  }, stepMs * duel.rows.length + 420);
+  duelRevealTimers.push(doneTimer);
+}
+
+function bumpScore(el) {
+  el.classList.remove('is-bumped');
+  void el.offsetWidth;
+  el.classList.add('is-bumped');
+  const timer = setTimeout(() => el.classList.remove('is-bumped'), 260);
+  duelRevealTimers.push(timer);
+}
+
+function attachTilt(tiltEl, targetCardEl) {
+  if (!tiltEl || !targetCardEl) return;
+  tiltEl.addEventListener('mousemove', (e) => {
+    const r = targetCardEl.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width;
+    const py = (e.clientY - r.top) / r.height;
+    targetCardEl.style.transform = `rotateY(${(px - 0.5) * 22}deg) rotateX(${(0.5 - py) * 16}deg)`;
+    targetCardEl.style.setProperty('--hx', `${px * 100}%`);
+    targetCardEl.style.setProperty('--hy', `${py * 100}%`);
+  });
+  tiltEl.addEventListener('mouseleave', () => {
+    targetCardEl.style.transform = '';
+  });
 }
 
 function esc(s) {
@@ -583,17 +828,7 @@ function downloadPngBlob(blob, filename) {
 }
 
 /* ---- 3D 倾斜 + 镭射光随鼠标移动 ---- */
-tilt.addEventListener('mousemove', (e) => {
-  const r = cardEl.getBoundingClientRect();
-  const px = (e.clientX - r.left) / r.width;
-  const py = (e.clientY - r.top) / r.height;
-  cardEl.style.transform = `rotateY(${(px - 0.5) * 22}deg) rotateX(${(0.5 - py) * 16}deg)`;
-  cardEl.style.setProperty('--hx', `${px * 100}%`);
-  cardEl.style.setProperty('--hy', `${py * 100}%`);
-});
-tilt.addEventListener('mouseleave', () => {
-  cardEl.style.transform = '';
-});
+attachTilt(tilt, cardEl);
 
 /* ---- 导出 PNG ----
  * html-to-image 通过 SVG foreignObject 走浏览器原生渲染，

@@ -1,8 +1,9 @@
 // 即刻宝可梦卡片生成器 — 零依赖 Node 服务器
 // 1. 托管 public/ 静态文件
 // 2. /api/profile?id=<uuid|username> 代理 m.okjike.com 的 SSR 数据（浏览器直接请求会被 CORS 拦截）
-// 3. /api/img?u=<url> 代理即刻 CDN 图片并附带 CORS 头，供 canvas 导出使用
-// 4. 为 / 与 /u/<id> 注入固定 OG 图片，避免社交爬虫触发动态抓取/渲染
+// 3. /api/duel?left=<id>&right=<id> 一次抓取两位用户，供 VS 页面使用
+// 4. /api/img?u=<url> 代理即刻 CDN 图片并附带 CORS 头，供 canvas 导出使用
+// 5. 为 /、/u/<id> 与 /u/<left>/vs/<right> 注入固定 OG 图片，避免社交爬虫触发动态抓取/渲染
 
 const http = require('http');
 const https = require('https');
@@ -144,6 +145,21 @@ async function handleProfile(query, res) {
   }
 }
 
+async function handleDuel(query, res) {
+  const left = (query.get('left') || '').trim();
+  const right = (query.get('right') || '').trim();
+  if (!left || !right) return sendJson(res, 400, { error: '缺少 left 或 right 参数' });
+
+  try {
+    const [leftProfile, rightProfile] = await Promise.all([getProfileData(left), getProfileData(right)]);
+    sendJson(res, 200, { left: leftProfile, right: rightProfile });
+  } catch (err) {
+    const isBadInput = err.message.includes('链接') || err.message.includes('URL') || err.message.includes('域名');
+    const status = err.message === '用户不存在' ? 404 : isBadInput ? 400 : 502;
+    sendJson(res, status, { error: '抓取对战数据失败: ' + err.message });
+  }
+}
+
 async function handleImage(query, res) {
   const u = query.get('u') || '';
   let target;
@@ -181,8 +197,11 @@ function buildMetaTags(req) {
   const base = getPublicBaseUrl(req);
   const pageUrl = new URL(req.url, base).href;
   const imageUrl = new URL('/og.png', base).href;
-  const title = '即可梦图鉴 · Jikémon';
-  const description = '把你的即刻主页变成一张宝可梦风格的收藏卡牌。';
+  const isDuel = /^\/u\/[\w-]+\/vs\/[\w-]+$/.test(new URL(req.url, base).pathname);
+  const title = isDuel ? '即可梦决斗 · Jikémon DUEL' : '即可梦图鉴 · Jikémon';
+  const description = isDuel
+    ? '两位即友的专属即可梦卡牌决斗。'
+    : '把你的即刻主页变成一张宝可梦风格的收藏卡牌。';
   return [
     `<link rel="canonical" href="${attr(pageUrl)}" />`,
     '<meta property="og:type" content="website" />',
@@ -252,6 +271,11 @@ async function handleRequest(req, res) {
       return sendJson(res, 429, { error: '捕捉太频繁，精灵球冷却中，休息一分钟再来吧' });
     return handleProfile(url.searchParams, res);
   }
+  if (url.pathname === '/api/duel') {
+    if (isRateLimited(req))
+      return sendJson(res, 429, { error: '捕捉太频繁，精灵球冷却中，休息一分钟再来吧' });
+    return handleDuel(url.searchParams, res);
+  }
   if (url.pathname === '/api/img') return handleImage(url.searchParams, res);
   if (url.pathname === '/og.png') return serveStatic('/og.png', res, req.method);
   // 兼容旧版动态 OG URL，避免线上缓存或旧分享链接读到 404。
@@ -259,6 +283,8 @@ async function handleRequest(req, res) {
     return serveStatic('/og.png', res, req.method);
   }
   if (url.pathname === '/') return serveIndex(req, res);
+  // VS 直达链接：先不在首页放入口，只支持直接访问 /u/<left>/vs/<right>
+  if (/^\/u\/[\w-]+\/vs\/[\w-]+$/.test(url.pathname)) return serveIndex(req, res);
   // 直达链接：/u/<id> 与即刻个人页同构，把 web.okjike.com 换成本站域名即可直接出卡
   if (/^\/u\/[\w-]+$/.test(url.pathname)) return serveIndex(req, res);
   serveStatic(url.pathname, res, req.method);

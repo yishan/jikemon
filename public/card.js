@@ -317,6 +317,7 @@ export function buildCard({ user, posts }) {
   });
 
   return {
+    username: user.username || user.id || '',
     name: user.screenName || '神秘即友',
     bio,
     avatar: user.avatarImage?.picUrl || user.profileImageUrl || '',
@@ -342,6 +343,129 @@ export function buildCard({ user, posts }) {
     isSponsor: !!user.isSponsor,
     metrics: { followers, liked, years: years.toFixed(1), postsPerDay: postsPerDay.toFixed(1), picRatio, avgLikes: avgLikes.toFixed(1), evoScore: Math.round(evoScore * 100) },
   };
+}
+
+export function buildDuel(left, right) {
+  const attackLeft = movePower(left);
+  const attackRight = movePower(right);
+  const linkLeft = linkScore(left);
+  const linkRight = linkScore(right);
+  const speedLeft = speedScore(left);
+  const speedRight = speedScore(right);
+
+  const rows = [
+    duelRow('hp', '生命', left.hp, right.hp, `${left.hp} HP`, `${right.hp} HP`, '粉丝、获赞、即龄折算出的卡面 HP'),
+    duelRow('attack', '火力', attackLeft, attackRight, `${attackLeft}`, `${attackRight}`, '两项技能伤害合计'),
+    duelRow('rarity', '稀有', left.rarityScore, right.rarityScore, `${left.rarityScore}`, `${right.rarityScore}`, '综合评分决定卡面稀有度'),
+    duelRow(
+      'evo',
+      '进化',
+      num(left.metrics.evoScore),
+      num(right.metrics.evoScore),
+      `${left.metrics.evoScore}`,
+      `${right.metrics.evoScore}`,
+      '即龄、粉丝、获赞共同决定的进化值'
+    ),
+    duelRow(
+      'speed',
+      '网感',
+      speedLeft,
+      speedRight,
+      speedLabel(left),
+      speedLabel(right),
+      '最近动态推算出的发帖节奏'
+    ),
+    duelRow('link', '连接', linkLeft, linkRight, `${linkLeft}`, `${linkRight}`, '粉丝、获赞、夸夸综合成的连接力'),
+  ];
+
+  const score = rows.reduce(
+    (acc, row) => {
+      if (row.winner === 'left') acc.left += 1;
+      if (row.winner === 'right') acc.right += 1;
+      return acc;
+    },
+    { left: 0, right: 0 }
+  );
+  const winner = score.left === score.right ? null : score.left > score.right ? 'left' : 'right';
+  const winnerCard = winner ? (winner === 'left' ? left : right) : null;
+  const closeRows = rows.filter((r) => r.winner !== 'draw').sort((a, b) => b.delta - a.delta);
+  const decisive = closeRows[0] || rows[0];
+
+  return {
+    left,
+    right,
+    rows,
+    score,
+    winner,
+    decisive,
+    receipts: [
+      receiptRow('粉丝连接', left.metrics.followers, right.metrics.followers),
+      receiptRow('累计获赞', left.metrics.liked, right.metrics.liked),
+      receiptRow('夸夸强化', left.respected, right.respected),
+      receiptRow('即刻年资', `${left.metrics.years} 年`, `${right.metrics.years} 年`),
+      receiptRow('发帖频率', `${left.metrics.postsPerDay}/天`, `${right.metrics.postsPerDay}/天`),
+      receiptRow('技能火力', attackLeft, attackRight),
+    ],
+    verdict: winnerCard
+      ? `${winnerCard.name} 以 ${score.left}:${score.right} 拿下决斗，关键优势来自「${decisive.label}」。`
+      : `双方 ${score.left}:${score.right} 战平，这场决斗更适合继续加赛一轮。`,
+  };
+}
+
+function duelRow(key, label, leftValue, rightValue, leftText, rightText, note) {
+  const l = num(leftValue);
+  const r = num(rightValue);
+  const winner = l === r ? 'draw' : l > r ? 'left' : 'right';
+  const total = l + r;
+  const leftPct = total > 0 ? Math.round((l / total) * 100) : 50;
+  const rightPct = total > 0 ? 100 - leftPct : 50;
+  return {
+    key,
+    label,
+    left: l,
+    right: r,
+    leftText,
+    rightText,
+    note,
+    winner,
+    delta: Math.abs(l - r),
+    leftPct,
+    rightPct,
+  };
+}
+
+function receiptRow(label, left, right) {
+  return { label, left, right };
+}
+
+function movePower(card) {
+  return (card.moves || []).reduce((sum, move) => sum + num(move.dmg), 0);
+}
+
+function speedScore(card) {
+  const postsPerDay = num(card.metrics?.postsPerDay);
+  return Math.round(clamp(postsPerDay / 2, 0, 1) * 100);
+}
+
+function speedLabel(card) {
+  const label = ['', '潜水党', '规律党', '日更狂魔'][card.handSpeed] || '潜水党';
+  return `${'★'.repeat(card.handSpeed)} ${label}`;
+}
+
+function linkScore(card) {
+  const followers = num(card.metrics?.followers);
+  const liked = num(card.metrics?.liked);
+  const respected = num(card.respected);
+  return Math.round(
+    clamp(log10(followers + 1) / 5, 0, 1) * 45 +
+      clamp(log10(liked + 1) / 5.5, 0, 1) * 35 +
+      clamp(log10(respected + 1) / 4, 0, 1) * 20
+  );
+}
+
+function num(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
 }
 
 // 圈子技能：属性来自圈子分类，技能名由圈名哈希从该属性技能池中选取

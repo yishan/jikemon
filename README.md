@@ -28,6 +28,18 @@ https://web.okjike.com/u/9db4da53-…   →   https://web.jikemon.com/u/9db4da53
 
 `/api/profile` 有按 IP 的频率限制（每分钟 10 次，内存滑动窗口），超限返回 429。
 
+## 隐藏 VS 对战页
+
+当前已支持一个暂不在首页暴露入口的 VS 直达页：
+
+```
+https://web.jikemon.com/u/<用户A>/vs/<用户B>
+```
+
+页面会一次请求 `/api/duel?left=<用户A>&right=<用户B>` 拿到双方公开主页数据，再分别生成两张
+即可梦卡牌，并按六项指标对比：生命、火力、稀有、进化、网感、连接。这个页面先用于单独核对
+对比内容和视觉表现，首页入口后续再加。
+
 ## 社交分享图（OG Image）
 
 页面会自动注入 Open Graph / Twitter Card meta：
