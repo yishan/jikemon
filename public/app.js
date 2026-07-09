@@ -570,6 +570,95 @@ async function buildFontEmbedCSS() {
   return css;
 }
 
+// 把卡片画面区的波纹与头像直接绘制到导出 canvas，绕开 iOS 丢弃 foreignObject 内 <img> 的问题。
+// 用真实 DOM 的 getBoundingClientRect 定位（导出时卡片 transform:none，实际尺寸=设计尺寸）。
+function drawCardArt(ctx, cardX, cardY) {
+  const artEl = cardEl.querySelector('.card-art');
+  if (!artEl) return;
+  const cardRect = cardEl.getBoundingClientRect();
+  if (!cardRect.width) return;
+  const k = 366 / cardRect.width; // 逻辑像素 / 实际像素（k≈1）
+  const rectOf = (el) => {
+    const r = el.getBoundingClientRect();
+    return {
+      x: cardX + (r.left - cardRect.left) * k,
+      y: cardY + (r.top - cardRect.top) * k,
+      w: r.width * k,
+      h: r.height * k,
+    };
+  };
+  const a = rectOf(artEl);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(a.x, a.y, a.w, a.h); // 限制在画面窗口内，避免溢出卡框
+  ctx.clip();
+
+  // 波纹背景（铺满画面窗口）
+  const ripple = artEl.querySelector('.art-ripple');
+  if (ripple?.complete && ripple.naturalWidth) {
+    ctx.drawImage(ripple, a.x, a.y, a.w, a.h);
+  }
+
+  // 头像：白环 + 投影 + 圆形裁剪（cover）
+  const avatar = artEl.querySelector('.avatar');
+  if (avatar?.complete && avatar.naturalWidth) {
+    const v = rectOf(avatar);
+    const cx0 = v.x + v.w / 2;
+    const cy0 = v.y + v.h / 2;
+    const rad = Math.min(v.w, v.h) / 2;
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.35)';
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetY = 6;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(cx0, cy0, rad + 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx0, cy0, rad, 0, Math.PI * 2);
+    ctx.clip();
+    const nw = avatar.naturalWidth;
+    const nh = avatar.naturalHeight;
+    const s = Math.max((rad * 2) / nw, (rad * 2) / nh);
+    ctx.drawImage(avatar, cx0 - (nw * s) / 2, cy0 - (nh * s) / 2, nw * s, nh * s);
+    ctx.restore();
+  }
+
+  // 角标（会员/认证）：波纹盖住了 SVG 里的角标，这里在最上层重绘（dark 胶囊 + 白字）
+  const badges = artEl.querySelectorAll('.art-badges span');
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = '700 9px "Noto Sans SC", sans-serif';
+  badges.forEach((b) => {
+    const r = rectOf(b);
+    roundRectPath(ctx, r.x, r.y, r.w, r.h, Math.min(r.h, r.w) / 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(b.textContent, r.x + r.w / 2, r.y + r.h / 2 + 0.5);
+  });
+  ctx.textBaseline = 'alphabetic'; // 复位，避免影响后续标题/正文定位
+
+  ctx.restore();
+}
+
+function roundRectPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  if (ctx.roundRect) {
+    ctx.roundRect(x, y, w, h, r);
+    return;
+  }
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
 // 把卡片矢量图合成到竖版分享图上：深色背景 + 背光 + 顶部标题 + 底部网址（参考 gitfut）
 async function composeExport(cardImg) {
   const S = 3; // 输出倍率
@@ -616,6 +705,10 @@ async function composeExport(cardImg) {
   ctx.shadowOffsetY = 22;
   ctx.drawImage(cardImg, cardX, cardY, CW, CH);
   ctx.restore();
+
+  // iOS WebKit 会丢弃 foreignObject 内的 <img>（波纹+头像），SVG 里画面区是空的；
+  // 按真实 DOM 布局把波纹与头像直接画到 canvas，跨平台一致（桌面是对齐叠加，结果不变）。
+  drawCardArt(ctx, cardX, cardY);
 
   // 文本
   await waitForFontsReady();
