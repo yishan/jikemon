@@ -231,6 +231,13 @@ body.is-duel-page .stage {
 }
 body.is-duel-page .masthead {
   margin-bottom: 30px;
+  position: relative;
+}
+body.is-duel-page .masthead h1 .slash {
+  display: inline-block;
+  margin: 0 -2px;
+  font-style: italic;
+  opacity: 0.65;
 }
 .duel-arena {
   display: block;
@@ -252,12 +259,40 @@ body.is-duel-page .masthead {
 }
 .duel-seeker {
   width: min(100%, 366px);
-  margin: 0 auto 2px;
+  margin: 2px auto 0;
 }
 .duel-seeker input {
   width: 100%;
   padding: 12px 16px;
   font-size: 13px;
+}
+.duel-swap-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: min(100%, 366px);
+  margin: 2px auto 0;
+  padding: 10px 16px;
+  font: 500 13px 'Noto Sans SC', sans-serif;
+  letter-spacing: 1px;
+  color: #9db8a7;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed rgba(157, 184, 167, 0.28);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s, color 0.18s;
+}
+.duel-swap-btn:hover {
+  color: var(--gold);
+  background: rgba(232, 197, 101, 0.08);
+  border-color: rgba(232, 197, 101, 0.38);
+}
+.duel-swap-btn:active {
+  transform: scale(0.98);
+}
+.duel-seeker.is-hidden {
+  display: none;
 }
 .duel-card-meta {
   width: min(100%, 366px);
@@ -270,6 +305,7 @@ body.is-duel-page .masthead {
   background: rgba(255, 253, 244, 0.06);
   border: 1px solid rgba(232, 197, 101, 0.22);
   border-radius: 10px;
+  margin: 0 auto 2px;
 }
 .duel-card-meta strong {
   min-width: 0;
@@ -299,16 +335,7 @@ body.is-duel-page .masthead {
   backdrop-filter: blur(8px);
 }
 .duel-board::before {
-  content: '';
-  position: absolute;
-  top: 22px;
-  left: 50%;
-  width: 2px;
-  height: 150px;
-  transform: translateX(-50%) rotate(13deg);
-  background: linear-gradient(to bottom, transparent, rgba(232, 197, 101, 0.88), transparent);
-  box-shadow: 0 0 18px rgba(232, 197, 101, 0.6);
-  pointer-events: none;
+  display: none;
 }
 .duel-kicker {
   text-align: center;
@@ -338,6 +365,11 @@ body.is-duel-page .masthead {
 .duel-score span:last-child {
   color: #39d353;
 }
+.duel-board--left .duel-score span:last-child,
+.duel-board--right .duel-score span:first-child {
+  color: #6b7c73;
+  text-shadow: none;
+}
 .duel-score span.is-bumped {
   color: #f6e79a;
   transform: scale(1.18);
@@ -348,10 +380,10 @@ body.is-duel-page .masthead {
   text-shadow: 0 3px 0 rgba(0, 0, 0, 0.35), 0 0 18px rgba(57, 211, 83, 0.52);
 }
 .duel-score b {
-  color: #39d353;
+  color: #9db8a7;
   font-size: 28px;
   line-height: 1;
-  text-shadow: 0 0 18px rgba(57, 211, 83, 0.55);
+  text-shadow: none;
 }
 .duel-board h2 {
   margin-top: 8px;
@@ -1072,11 +1104,7 @@ body.is-export-preview-open {
   .duel-card-side--left { order: 2; }
   .duel-card-side--right { order: 3; }
   .duel-board::before {
-    top: 18px;
-    left: 50%;
-    width: 2px;
-    height: 142px;
-    transform: translateX(-50%) rotate(13deg);
+    display: none;
   }
 }
 

@@ -583,7 +583,10 @@ function duelSeekerMarkup(side, card) {
   const name = side === 'left' ? 'Left' : 'Right';
   const label = side === 'left' ? '左侧即可梦主页链接' : '右侧即可梦主页链接';
   return `
-    <form class="seeker duel-seeker" id="duel${name}Form" data-duel-side="${side}" aria-label="${label}">
+    <button class="duel-swap-btn" id="duel${name}SwapBtn" data-duel-side="${side}" type="button">
+      ↻ 更换即可梦
+    </button>
+    <form class="seeker duel-seeker is-hidden" id="duel${name}Form" data-duel-side="${side}" aria-label="${label}">
       <input
         id="duel${name}Input"
         type="text"
@@ -607,14 +610,14 @@ function renderDuel(duel) {
   arena.innerHTML = `
     <section class="duel-shell">
       <div class="duel-card-side duel-card-side--left">
-        ${duelSeekerMarkup('left', duel.left)}
-        <div class="card-tilt duel-tilt" id="duelLeftTilt">
-          <article class="card duel-card" id="duelLeftCard"></article>
-        </div>
         <div class="duel-card-meta">
           <strong>${esc(duel.left.name)}</strong>
           <span>${duel.left.type.icon} ${duel.left.type.name}系 · ${duel.left.rarity.key}</span>
         </div>
+        <div class="card-tilt duel-tilt" id="duelLeftTilt">
+          <article class="card duel-card" id="duelLeftCard"></article>
+        </div>
+        ${duelSeekerMarkup('left', duel.left)}
       </div>
 
       <section class="duel-board ${winnerClass}" aria-label="即可梦决斗结果">
@@ -644,14 +647,14 @@ function renderDuel(duel) {
       </section>
 
       <div class="duel-card-side duel-card-side--right">
-        ${duelSeekerMarkup('right', duel.right)}
-        <div class="card-tilt duel-tilt" id="duelRightTilt">
-          <article class="card duel-card" id="duelRightCard"></article>
-        </div>
         <div class="duel-card-meta">
           <strong>${esc(duel.right.name)}</strong>
           <span>${duel.right.type.icon} ${duel.right.type.name}系 · ${duel.right.rarity.key}</span>
         </div>
+        <div class="card-tilt duel-tilt" id="duelRightTilt">
+          <article class="card duel-card" id="duelRightCard"></article>
+        </div>
+        ${duelSeekerMarkup('right', duel.right)}
       </div>
     </section>
   `;
@@ -670,6 +673,20 @@ function bindDuelSearchForms() {
   ['duelLeftForm', 'duelRightForm'].forEach((id) => {
     const duelForm = $(id);
     duelForm?.addEventListener('submit', handleDuelSubmit);
+  });
+  ['duelLeftSwapBtn', 'duelRightSwapBtn'].forEach((id) => {
+    const btn = $(id);
+    btn?.addEventListener('click', () => {
+      const side = btn.dataset.duelSide;
+      const name = side === 'left' ? 'Left' : 'Right';
+      const formEl = $(`duel${name}Form`);
+      const inputEl = $(`duel${name}Input`);
+      if (!formEl) return;
+      btn.style.display = 'none';
+      formEl.classList.remove('is-hidden');
+      inputEl?.select();
+      inputEl?.focus();
+    });
   });
 }
 

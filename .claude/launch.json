@@ -5,7 +5,8 @@
       "name": "jike-pokemon",
       "runtimeExecutable": "node",
       "runtimeArgs": ["server.js"],
-      "port": 4399
+      "port": 4399,
+      "autoPort": true
     }
   ]
 }
