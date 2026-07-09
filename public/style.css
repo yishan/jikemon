@@ -94,7 +94,7 @@ h1 {
 .seeker {
   display: flex;
   gap: 10px;
-  max-width: 620px;
+  max-width: 366px;
   margin: 0 auto 28px;
   position: relative;
   --catch-progress: 0;
@@ -710,13 +710,6 @@ body.is-export-preview-open {
   color: #6f8a7a;
 }
 .colophon a { color: #9db8a7; }
-/* 三条署名：宽屏一行（· 分隔），窄屏每条独占一行并隐藏分隔点 */
-.colophon .credits {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0 8px;
-}
 .colophon .brand {
   margin-top: 10px;
   letter-spacing: 1px;
@@ -732,9 +725,8 @@ body.is-export-preview-open {
   margin-left: auto;
   margin-right: auto;
 }
-@media (max-width: 600px) {
-  .colophon .credits { flex-direction: column; gap: 4px; }
-  .colophon .credits .sep { display: none; }
+.colophon .disclaimer a {
+  color: inherit;
 }
 
 /* 卡片入场动画 */

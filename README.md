@@ -24,8 +24,7 @@ node server.js
 https://web.okjike.com/u/9db4da53-…   →   https://web.jikemon.com/u/9db4da53-…
 ```
 
-生成成功后地址栏也会自动同步为 `/u/<id>` 直达链接，方便复制分享。输入框的占位提示
-始终展示 `web.okjike.com/u/…` 格式，让用户一眼明白该粘贴什么。
+生成成功后地址栏也会自动同步为 `/u/<id>` 直达链接，方便复制分享。输入框会提示用户输入即刻主页链接。
 
 `/api/profile` 有按 IP 的频率限制（每分钟 10 次，内存滑动窗口），超限返回 429。
 
