@@ -240,7 +240,7 @@ body.is-duel-page .masthead {
   display: grid;
   grid-template-columns: minmax(260px, 366px) minmax(260px, 330px) minmax(260px, 366px);
   gap: 24px;
-  align-items: center;
+  align-items: start;
   justify-content: center;
 }
 .duel-card-side {
@@ -249,6 +249,15 @@ body.is-duel-page .masthead {
   flex-direction: column;
   align-items: center;
   gap: 14px;
+}
+.duel-seeker {
+  width: min(100%, 366px);
+  margin: 0 auto 2px;
+}
+.duel-seeker input {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 13px;
 }
 .duel-card-meta {
   width: min(100%, 366px);
@@ -316,7 +325,6 @@ body.is-duel-page .masthead {
   font-family: 'M PLUS Rounded 1c', sans-serif;
 }
 .duel-score span {
-  color: var(--gold);
   font-size: 54px;
   font-weight: 900;
   line-height: 1;
@@ -324,10 +332,20 @@ body.is-duel-page .masthead {
   text-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
   transition: transform 0.22s ease, color 0.22s ease, text-shadow 0.22s ease;
 }
+.duel-score span:first-child {
+  color: var(--gold);
+}
+.duel-score span:last-child {
+  color: #39d353;
+}
 .duel-score span.is-bumped {
   color: #f6e79a;
   transform: scale(1.18);
   text-shadow: 0 3px 0 rgba(0, 0, 0, 0.35), 0 0 18px rgba(232, 197, 101, 0.52);
+}
+.duel-score span:last-child.is-bumped {
+  color: #7ee787;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.35), 0 0 18px rgba(57, 211, 83, 0.52);
 }
 .duel-score b {
   color: #39d353;
@@ -346,6 +364,9 @@ body.is-duel-page .masthead {
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.duel-board h2:empty {
+  display: none;
 }
 .duel-verdict {
   margin: 8px auto 16px;
@@ -387,9 +408,9 @@ body.is-duel-page .masthead {
   border-color: rgba(232, 197, 101, 0.68);
 }
 .duel-row.is-current[data-winner='right'] {
-  border-color: rgba(69, 184, 172, 0.72);
-  background: rgba(69, 184, 172, 0.09);
-  box-shadow: 0 0 0 1px rgba(69, 184, 172, 0.16), 0 0 22px rgba(69, 184, 172, 0.14);
+  border-color: rgba(57, 211, 83, 0.72);
+  background: rgba(57, 211, 83, 0.09);
+  box-shadow: 0 0 0 1px rgba(57, 211, 83, 0.16), 0 0 22px rgba(57, 211, 83, 0.14);
 }
 .duel-row.is-current[data-winner='draw'] {
   border-color: rgba(255, 255, 255, 0.32);
@@ -435,14 +456,22 @@ body.is-duel-page .masthead {
   max-width: 100%;
 }
 .duel-share__left {
-  background: linear-gradient(90deg, rgba(232, 197, 101, 0.24), rgba(232, 197, 101, 0.95));
+  background: linear-gradient(90deg, rgba(182, 190, 181, 0.14), rgba(182, 190, 181, 0.38));
 }
 .duel-share__right {
-  background: linear-gradient(90deg, rgba(69, 184, 172, 0.95), rgba(69, 184, 172, 0.24));
+  background: linear-gradient(90deg, rgba(182, 190, 181, 0.38), rgba(182, 190, 181, 0.14));
 }
-.duel-row[data-winner='left'] .duel-row-head span:first-child,
-.duel-row[data-winner='right'] .duel-row-head span:last-child {
+.duel-row[data-winner='left'] .duel-share__left {
+  background: linear-gradient(90deg, rgba(232, 197, 101, 0.28), rgba(232, 197, 101, 0.98));
+}
+.duel-row[data-winner='right'] .duel-share__right {
+  background: linear-gradient(90deg, rgba(57, 211, 83, 0.98), rgba(57, 211, 83, 0.28));
+}
+.duel-row[data-winner='left'] .duel-row-head span:first-child {
   color: #f6e79a;
+}
+.duel-row[data-winner='right'] .duel-row-head span:last-child {
+  color: #7ee787;
 }
 .duel-receipts {
   display: grid;

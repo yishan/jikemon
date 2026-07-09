@@ -19,11 +19,96 @@ let inlineExportPreview = null;
 let exportPreviewViewportContent = null;
 let catchProgressFrame = 0;
 let duelRevealTimers = [];
+let duelLoadSeq = 0;
+let duelLoading = false;
+const profileCache = new Map();
+const duelPairCache = new Map();
 
 // 从输入中提取用户 ID：支持 /u/ /user/ /users/ 路径或裸 ID（仅用作地址栏回退，权威 ID 用响应里的 username）
 function extractId(raw) {
-  const m = raw.match(/\/u(?:sers?)?\/([\w-]+)/);
-  return m ? m[1] : raw;
+  const text = String(raw || '').trim();
+  const m = text.match(/\/u(?:sers?)?\/([\w-]+)/);
+  return m ? m[1] : text;
+}
+
+function profileCacheKey(raw) {
+  return extractId(raw).toLowerCase();
+}
+
+function rememberProfile(raw, data) {
+  if (!data?.user) return data;
+  const cached = Promise.resolve(data);
+  const keys = [raw, data.user.username, data.user.id].map(profileCacheKey).filter(Boolean);
+  keys.forEach((key) => profileCache.set(key, cached));
+  return data;
+}
+
+async function fetchProfileCached(raw) {
+  const key = profileCacheKey(raw);
+  if (!key) throw new Error('请输入即刻主页链接');
+
+  const hit = profileCache.get(key);
+  if (hit) return hit;
+
+  const request = fetch(`/api/profile?id=${encodeURIComponent(raw)}`)
+    .then(async (res) => {
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '捕捉失败');
+      return rememberProfile(raw, data);
+    })
+    .catch((err) => {
+      profileCache.delete(key);
+      throw err;
+    });
+
+  profileCache.set(key, request);
+  return request;
+}
+
+async function fetchDuelCached(leftRaw, rightRaw) {
+  const leftKey = profileCacheKey(leftRaw);
+  const rightKey = profileCacheKey(rightRaw);
+  if (!leftKey || !rightKey) throw new Error('请分别输入两位即友的主页链接');
+
+  if (leftKey === rightKey) {
+    const data = await fetchProfileCached(leftRaw);
+    return { left: data, right: data };
+  }
+
+  const leftHit = profileCache.get(leftKey);
+  const rightHit = profileCache.get(rightKey);
+  if (leftHit || rightHit) {
+    const [left, right] = await Promise.all([fetchProfileCached(leftRaw), fetchProfileCached(rightRaw)]);
+    return { left, right };
+  }
+
+  const pairKey = `${leftKey}::${rightKey}`;
+  const pairHit = duelPairCache.get(pairKey);
+  if (pairHit) return pairHit;
+
+  const request = fetch(`/api/duel?left=${encodeURIComponent(leftRaw)}&right=${encodeURIComponent(rightRaw)}`)
+    .then(async (res) => {
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '对战加载失败');
+      rememberProfile(leftRaw, data.left);
+      rememberProfile(rightRaw, data.right);
+      return data;
+    })
+    .catch((err) => {
+      duelPairCache.delete(pairKey);
+      profileCache.delete(leftKey);
+      profileCache.delete(rightKey);
+      throw err;
+    });
+
+  duelPairCache.set(pairKey, request);
+  const leftProfileRequest = request.then((data) => data.left);
+  const rightProfileRequest = request.then((data) => data.right);
+  leftProfileRequest.catch(() => {});
+  rightProfileRequest.catch(() => {});
+  profileCache.set(leftKey, leftProfileRequest);
+  profileCache.set(rightKey, rightProfileRequest);
+  return request;
 }
 
 // 卡片固定 366px 设计，窄屏按可用宽度等比缩放（写入 CSS 变量 --m），避免文字重排导致排版变形
@@ -53,9 +138,7 @@ form.addEventListener('submit', async (e) => {
   openBtn.disabled = true;
   openBtn.textContent = '捕捉中…';
   try {
-    const res = await fetch(`/api/profile?id=${encodeURIComponent(id)}`);
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || '捕捉失败');
+    const data = await fetchProfileCached(id);
     const card = buildCard(data);
     await finishCatchProgress();
     render(card);
@@ -139,6 +222,42 @@ function stopCatchProgress() {
   form.removeAttribute('aria-busy');
   input.disabled = false;
   setCatchProgress(0);
+}
+
+function startInlineCatchProgress(formEl) {
+  const inputEl = formEl?.querySelector('input');
+  if (!formEl || !inputEl) return null;
+  const state = { formEl, inputEl, frame: 0 };
+  formEl.style.setProperty('--catch-progress', '0.0200');
+  formEl.classList.add('is-catching');
+  formEl.setAttribute('aria-busy', 'true');
+  inputEl.disabled = true;
+  const startedAt = performance.now();
+  const estimatedMs = 7200;
+  const tick = (now) => {
+    const t = Math.min(1, (now - startedAt) / estimatedMs);
+    const eased = 1 - Math.pow(1 - t, 3);
+    formEl.style.setProperty('--catch-progress', (0.02 + eased * 0.84).toFixed(4));
+    if (t < 1 && formEl.classList.contains('is-catching')) state.frame = requestAnimationFrame(tick);
+  };
+  state.frame = requestAnimationFrame(tick);
+  return state;
+}
+
+function finishInlineCatchProgress(state) {
+  if (!state) return Promise.resolve();
+  cancelAnimationFrame(state.frame);
+  state.formEl.style.setProperty('--catch-progress', '1');
+  return wait(280);
+}
+
+function stopInlineCatchProgress(state) {
+  if (!state) return;
+  cancelAnimationFrame(state.frame);
+  state.formEl.classList.remove('is-catching');
+  state.formEl.removeAttribute('aria-busy');
+  state.formEl.style.setProperty('--catch-progress', '0');
+  state.inputEl.disabled = false;
 }
 
 function energyDots(type, count) {
@@ -405,6 +524,7 @@ function render(c) {
 }
 
 async function loadDuelRoute(leftId, rightId) {
+  const loadToken = ++duelLoadSeq;
   currentMode = 'duel';
   document.body.classList.add('is-duel-page');
   const titleEl = document.querySelector('.masthead h1');
@@ -426,23 +546,11 @@ async function loadDuelRoute(leftId, rightId) {
   setStatus('');
 
   try {
-    const res = await fetch(`/api/duel?left=${encodeURIComponent(leftId)}&right=${encodeURIComponent(rightId)}`);
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || '对战加载失败');
-
-    const left = buildCard(data.left);
-    const right = buildCard(data.right);
-    const duel = buildDuel(left, right);
-    currentDuel = duel;
-    currentCard = null;
-    currentCardNo = '';
-
-    const canonicalLeft = data.left?.user?.username || leftId;
-    const canonicalRight = data.right?.user?.username || rightId;
-    history.replaceState(null, '', `/u/${canonicalLeft}/vs/${canonicalRight}`);
-    document.title = `${left.name} vs ${right.name} · 即可梦决斗`;
-    renderDuel(duel);
+    const data = await fetchDuelCached(leftId, rightId);
+    if (loadToken !== duelLoadSeq) return;
+    renderDuelData(data, leftId, rightId);
   } catch (err) {
+    if (loadToken !== duelLoadSeq) return;
     arena.innerHTML = `
       <section class="duel-loading duel-loading--error" role="status">
         <strong>对战加载失败</strong>
@@ -452,14 +560,54 @@ async function loadDuelRoute(leftId, rightId) {
   }
 }
 
+function renderDuelData(data, leftFallback, rightFallback) {
+  const left = buildCard(data.left);
+  const right = buildCard(data.right);
+  const duel = buildDuel(left, right);
+  currentDuel = duel;
+  currentCard = null;
+  currentCardNo = '';
+
+  const canonicalLeft = data.left?.user?.username || left.username || extractId(leftFallback);
+  const canonicalRight = data.right?.user?.username || right.username || extractId(rightFallback);
+  history.replaceState(null, '', `/u/${canonicalLeft}/vs/${canonicalRight}`);
+  document.title = `${left.name} vs ${right.name} · 即可梦决斗`;
+  renderDuel(duel);
+}
+
+function duelProfileUrl(card) {
+  return card.username ? `https://web.okjike.com/u/${card.username}` : '';
+}
+
+function duelSeekerMarkup(side, card) {
+  const name = side === 'left' ? 'Left' : 'Right';
+  const label = side === 'left' ? '左侧即可梦主页链接' : '右侧即可梦主页链接';
+  return `
+    <form class="seeker duel-seeker" id="duel${name}Form" data-duel-side="${side}" aria-label="${label}">
+      <input
+        id="duel${name}Input"
+        type="text"
+        value="${esc(duelProfileUrl(card))}"
+        placeholder="请输入即刻主页链接..."
+        spellcheck="false"
+      />
+      <div class="seeker-loading" role="status" aria-live="polite">
+        <span class="seeker-loading__bar" aria-hidden="true"></span>
+        <span class="catch-ball" aria-hidden="true"></span>
+        <span class="seeker-loading__text">精灵球正在捕捉中</span>
+      </div>
+    </form>
+  `;
+}
+
 function renderDuel(duel) {
   clearDuelRevealTimers();
-  const winnerName = duel.winner ? duel[duel.winner].name : '平局';
   const winnerClass = duel.winner ? `duel-board--${duel.winner}` : 'duel-board--draw';
   arena.className = 'arena duel-arena';
   arena.innerHTML = `
     <section class="duel-shell">
       <div class="duel-card-side duel-card-side--left">
+        ${duelSeekerMarkup('left', duel.left)}
         <div class="card-tilt duel-tilt" id="duelLeftTilt">
           <article class="card duel-card" id="duelLeftCard"></article>
         </div>
@@ -496,6 +644,7 @@ function renderDuel(duel) {
       </section>
 
       <div class="duel-card-side duel-card-side--right">
+        ${duelSeekerMarkup('right', duel.right)}
         <div class="card-tilt duel-tilt" id="duelRightTilt">
           <article class="card duel-card" id="duelRightCard"></article>
         </div>
@@ -513,7 +662,62 @@ function renderDuel(duel) {
   renderCardElement(rightCard, duel.right, { reveal: true });
   attachTilt($('duelLeftTilt'), leftCard);
   attachTilt($('duelRightTilt'), rightCard);
-  playDuelReveal(duel, { winnerName });
+  bindDuelSearchForms();
+  playDuelReveal(duel);
+}
+
+function bindDuelSearchForms() {
+  ['duelLeftForm', 'duelRightForm'].forEach((id) => {
+    const duelForm = $(id);
+    duelForm?.addEventListener('submit', handleDuelSubmit);
+  });
+}
+
+function setDuelInputsDisabled(disabled) {
+  document.querySelectorAll('.duel-seeker input').forEach((field) => {
+    field.disabled = disabled;
+  });
+}
+
+function setDuelFeedback(message) {
+  const verdictEl = $('duelVerdict');
+  if (verdictEl) verdictEl.textContent = message;
+}
+
+async function handleDuelSubmit(e) {
+  e.preventDefault();
+  if (duelLoading) return;
+
+  const leftInput = $('duelLeftInput');
+  const rightInput = $('duelRightInput');
+  const leftRaw = leftInput?.value.trim();
+  const rightRaw = rightInput?.value.trim();
+
+  if (!leftRaw || !rightRaw) {
+    setDuelFeedback('请分别输入两位即友的主页链接。');
+    (leftRaw ? rightInput : leftInput)?.focus();
+    return;
+  }
+
+  duelLoading = true;
+  clearDuelRevealTimers();
+  const loadToken = ++duelLoadSeq;
+  const progressState = startInlineCatchProgress(e.currentTarget);
+  setDuelInputsDisabled(true);
+  setDuelFeedback('正在捕捉新的对战双方。');
+
+  try {
+    const data = await fetchDuelCached(leftRaw, rightRaw);
+    await finishInlineCatchProgress(progressState);
+    if (loadToken !== duelLoadSeq) return;
+    renderDuelData(data, leftRaw, rightRaw);
+  } catch (err) {
+    if (loadToken === duelLoadSeq) setDuelFeedback('它逃走了：' + err.message);
+  } finally {
+    stopInlineCatchProgress(progressState);
+    duelLoading = false;
+    setDuelInputsDisabled(false);
+  }
 }
 
 function duelRowMarkup(row, index) {
@@ -537,7 +741,7 @@ function clearDuelRevealTimers() {
   duelRevealTimers = [];
 }
 
-function playDuelReveal(duel, { winnerName }) {
+function playDuelReveal(duel) {
   const rows = [...document.querySelectorAll('.duel-row')];
   const leftScoreEl = $('duelScoreLeft');
   const rightScoreEl = $('duelScoreRight');
@@ -550,7 +754,7 @@ function playDuelReveal(duel, { winnerName }) {
     rows.forEach((row) => row.classList.add('is-resolved'));
     leftScoreEl.textContent = duel.score.left;
     rightScoreEl.textContent = duel.score.right;
-    if (titleEl) titleEl.textContent = winnerName;
+    if (titleEl) titleEl.textContent = '';
     if (verdictEl) verdictEl.textContent = duel.verdict;
     return;
   }
@@ -591,7 +795,7 @@ function playDuelReveal(duel, { winnerName }) {
     rows.forEach((el) => el.classList.remove('is-current'));
     leftScoreEl.textContent = duel.score.left;
     rightScoreEl.textContent = duel.score.right;
-    if (titleEl) titleEl.textContent = winnerName;
+    if (titleEl) titleEl.textContent = '';
     if (verdictEl) verdictEl.textContent = duel.verdict;
   }, stepMs * duel.rows.length + 420);
   duelRevealTimers.push(doneTimer);
