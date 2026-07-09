@@ -413,6 +413,7 @@ function waitForImageElement(img, { timeoutMs = 5000, label = '图片', required
 function loadImage(src, { timeoutMs = 8000, label = '图片' } = {}) {
   return new Promise((resolve, reject) => {
     const img = new Image();
+    if (!/^(data|blob):/i.test(src)) img.crossOrigin = 'anonymous';
     let settled = false;
     const cleanup = () => {
       clearTimeout(timer);
@@ -442,6 +443,19 @@ async function decodeBestEffort(img, timeoutMs = 1500) {
 async function waitForFontsReady(timeoutMs = 1500) {
   if (!document.fonts?.ready) return;
   await Promise.race([document.fonts.ready, wait(timeoutMs)]).catch(() => {});
+}
+
+function waitForPaint(timeoutMs = 120) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+    requestAnimationFrame(() => requestAnimationFrame(done));
+    setTimeout(done, timeoutMs);
+  });
 }
 
 function shouldUseMobileExportPreview() {
@@ -570,9 +584,54 @@ async function buildFontEmbedCSS() {
   return css;
 }
 
+async function imageAssetFromElement(el, { timeoutMs = 5000, label = '图片', required = false } = {}) {
+  if (!el) return null;
+  const src = el.currentSrc || el.src;
+  try {
+    await waitForImageElement(el, { timeoutMs, label, required: true });
+    await decodeBestEffort(el);
+    if (el.naturalWidth > 0) return el;
+  } catch (err) {
+    if (!src) {
+      if (required) throw err;
+      return null;
+    }
+  }
+
+  try {
+    const fresh = await loadImage(src, { timeoutMs, label });
+    await decodeBestEffort(fresh);
+    return fresh;
+  } catch (err) {
+    if (required) throw err;
+    return null;
+  }
+}
+
+async function collectExportArtAssets() {
+  const artEl = cardEl.querySelector('.card-art');
+  if (!artEl) return {};
+  const rippleEl = artEl.querySelector('.art-ripple');
+  const avatarEl = artEl.querySelector('.avatar');
+  const [ripple, avatar] = await Promise.all([
+    imageAssetFromElement(rippleEl, { timeoutMs: 5000, label: '波纹背景', required: true }),
+    avatarEl
+      ? imageAssetFromElement(avatarEl, { timeoutMs: 6000, label: '头像', required: true })
+      : Promise.resolve(null),
+  ]);
+  return { ripple, avatar };
+}
+
+function imageSize(img) {
+  return {
+    w: img?.naturalWidth || img?.videoWidth || img?.width || 0,
+    h: img?.naturalHeight || img?.videoHeight || img?.height || 0,
+  };
+}
+
 // 把卡片画面区的波纹与头像直接绘制到导出 canvas，绕开 iOS 丢弃 foreignObject 内 <img> 的问题。
 // 用真实 DOM 的 getBoundingClientRect 定位（导出时卡片 transform:none，实际尺寸=设计尺寸）。
-function drawCardArt(ctx, cardX, cardY) {
+function drawCardArt(ctx, cardX, cardY, assets = {}) {
   const artEl = cardEl.querySelector('.card-art');
   if (!artEl) return;
   const cardRect = cardEl.getBoundingClientRect();
@@ -588,22 +647,37 @@ function drawCardArt(ctx, cardX, cardY) {
     };
   };
   const a = rectOf(artEl);
+  const artStyle = getComputedStyle(artEl);
+  const border = {
+    l: parseFloat(artStyle.borderLeftWidth) * k || 0,
+    t: parseFloat(artStyle.borderTopWidth) * k || 0,
+    r: parseFloat(artStyle.borderRightWidth) * k || 0,
+    b: parseFloat(artStyle.borderBottomWidth) * k || 0,
+  };
+  const content = {
+    x: a.x + border.l,
+    y: a.y + border.t,
+    w: Math.max(0, a.w - border.l - border.r),
+    h: Math.max(0, a.h - border.t - border.b),
+  };
 
   ctx.save();
   ctx.beginPath();
-  ctx.rect(a.x, a.y, a.w, a.h); // 限制在画面窗口内，避免溢出卡框
+  ctx.rect(content.x, content.y, content.w, content.h); // 只补画内容区，保留卡面原本的画框边缘
   ctx.clip();
 
   // 波纹背景（铺满画面窗口）
-  const ripple = artEl.querySelector('.art-ripple');
-  if (ripple?.complete && ripple.naturalWidth) {
-    ctx.drawImage(ripple, a.x, a.y, a.w, a.h);
+  const ripple = assets.ripple || artEl.querySelector('.art-ripple');
+  if (imageSize(ripple).w) {
+    ctx.drawImage(ripple, content.x, content.y, content.w, content.h);
   }
 
   // 头像：白环 + 投影 + 圆形裁剪（cover）
-  const avatar = artEl.querySelector('.avatar');
-  if (avatar?.complete && avatar.naturalWidth) {
-    const v = rectOf(avatar);
+  const avatarEl = artEl.querySelector('.avatar');
+  const avatar = assets.avatar || avatarEl;
+  const avatarNatural = imageSize(avatar);
+  if (avatarEl && avatarNatural.w) {
+    const v = rectOf(avatarEl);
     const cx0 = v.x + v.w / 2;
     const cy0 = v.y + v.h / 2;
     const rad = Math.min(v.w, v.h) / 2;
@@ -620,8 +694,8 @@ function drawCardArt(ctx, cardX, cardY) {
     ctx.beginPath();
     ctx.arc(cx0, cy0, rad, 0, Math.PI * 2);
     ctx.clip();
-    const nw = avatar.naturalWidth;
-    const nh = avatar.naturalHeight;
+    const nw = avatarNatural.w;
+    const nh = avatarNatural.h;
     const s = Math.max((rad * 2) / nw, (rad * 2) / nh);
     ctx.drawImage(avatar, cx0 - (nw * s) / 2, cy0 - (nh * s) / 2, nw * s, nh * s);
     ctx.restore();
@@ -660,7 +734,7 @@ function roundRectPath(ctx, x, y, w, h, r) {
 }
 
 // 把卡片矢量图合成到竖版分享图上：深色背景 + 背光 + 顶部标题 + 底部网址（参考 gitfut）
-async function composeExport(cardImg) {
+async function composeExport(cardImg, artAssets = {}) {
   const S = 3; // 输出倍率
   const CW = 366, CH = 512; // 卡片逻辑尺寸
   const PAD_X = 74, TOP = 42, TITLE_H = 126, GAP_TOP = 30, GAP_BOT = 40, FOOT_H = 122, BOT = 46;
@@ -703,12 +777,20 @@ async function composeExport(cardImg) {
   ctx.shadowColor = 'rgba(0,0,0,0.55)';
   ctx.shadowBlur = 34;
   ctx.shadowOffsetY = 22;
+  roundRectPath(ctx, cardX, cardY, CW, CH, 16);
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  roundRectPath(ctx, cardX, cardY, CW, CH, 16);
+  ctx.clip();
   ctx.drawImage(cardImg, cardX, cardY, CW, CH);
   ctx.restore();
 
   // iOS WebKit 会丢弃 foreignObject 内的 <img>（波纹+头像），SVG 里画面区是空的；
   // 按真实 DOM 布局把波纹与头像直接画到 canvas，跨平台一致（桌面是对齐叠加，结果不变）。
-  drawCardArt(ctx, cardX, cardY);
+  drawCardArt(ctx, cardX, cardY, artAssets);
 
   // 文本
   await waitForFontsReady();
@@ -759,13 +841,10 @@ $('download').addEventListener('click', async () => {
   btn.textContent = '合成卡牌中…';
   const prevTransform = cardEl.style.transform;
   cardEl.style.transform = 'none';
+  cardEl.classList.add('is-exporting');
   try {
-    // 先确保头像本身完成加载；decode 在后台/隐藏页可能被暂停，所以只做带超时的最佳努力。
-    const avatarImg = cardEl.querySelector('.card-art .avatar');
-    if (avatarImg) {
-      await waitForImageElement(avatarImg, { timeoutMs: 3000, label: '头像' });
-      await decodeBestEffort(avatarImg);
-    }
+    await waitForPaint();
+    const artAssets = await collectExportArtAssets();
 
     const fontEmbedCSS = await buildFontEmbedCSS();
     // 只用 toSvg 拿矢量快照，光栅化自己做（库内置的 toPng 在部分环境下会挂起）。
@@ -778,7 +857,7 @@ $('download').addEventListener('click', async () => {
     // （用 setTimeout 而非 rAF：后台/隐藏标签页 rAF 会被暂停导致卡死）
     await wait(120);
 
-    const composed = await composeExport(img);
+    const composed = await composeExport(img, artAssets);
     const blob = await canvasToPngBlob(composed);
     if (useMobilePreview) {
       showInlineExportPreview(blob);
@@ -788,6 +867,7 @@ $('download').addEventListener('click', async () => {
   } catch (err) {
     setStatus('导出失败：' + err.message);
   } finally {
+    cardEl.classList.remove('is-exporting');
     cardEl.style.transform = prevTransform;
     btn.disabled = false;
     btn.textContent = '导出卡牌';
