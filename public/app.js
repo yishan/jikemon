@@ -629,24 +629,75 @@ function imageSize(img) {
   };
 }
 
+function rectInExport(el, cardX, cardY) {
+  const cardRect = cardEl.getBoundingClientRect();
+  if (!cardRect.width) return null;
+  const r = el.getBoundingClientRect();
+  const k = 366 / cardRect.width;
+  return {
+    x: cardX + (r.left - cardRect.left) * k,
+    y: cardY + (r.top - cardRect.top) * k,
+    w: r.width * k,
+    h: r.height * k,
+  };
+}
+
+function cssColor(style, name, fallback) {
+  return style.getPropertyValue(name).trim() || fallback;
+}
+
+function drawCardUnderlay(ctx, cardX, cardY, cw, ch) {
+  const cardStyle = getComputedStyle(cardEl);
+  const frame = cssColor(cardStyle, '--frame', '#7fa8d9');
+  const frameDeep = cssColor(cardStyle, '--frame-deep', '#40679e');
+
+  ctx.save();
+  roundRectPath(ctx, cardX, cardY, cw, ch, 16);
+  const frameGradient = ctx.createLinearGradient(cardX, cardY, cardX + cw, cardY + ch);
+  if (cardEl.dataset.rarity === 'UR') {
+    frameGradient.addColorStop(0, '#f7c3d0');
+    frameGradient.addColorStop(0.22, '#f9e79b');
+    frameGradient.addColorStop(0.44, '#b9f0c3');
+    frameGradient.addColorStop(0.66, '#a9d8f5');
+    frameGradient.addColorStop(0.84, '#d5b8f2');
+    frameGradient.addColorStop(1, '#f7c3d0');
+  } else {
+    frameGradient.addColorStop(0, frame);
+    frameGradient.addColorStop(0.5, frameDeep);
+    frameGradient.addColorStop(1, frame);
+  }
+  ctx.fillStyle = frameGradient;
+  ctx.fill();
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+  ctx.stroke();
+  ctx.restore();
+
+  const innerEl = cardEl.querySelector('.card-inner');
+  const inner = innerEl && rectInExport(innerEl, cardX, cardY);
+  if (!inner) return;
+
+  const innerStyle = getComputedStyle(innerEl);
+  const bodyBg = cssColor(cardStyle, '--body-bg', innerStyle.backgroundColor || '#fdf7e3');
+  ctx.save();
+  roundRectPath(ctx, inner.x, inner.y, inner.w, inner.h, parseFloat(innerStyle.borderRadius) || 8);
+  ctx.fillStyle = bodyBg;
+  ctx.fill();
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+  ctx.stroke();
+  ctx.restore();
+}
+
 // 把卡片画面区的波纹与头像直接绘制到导出 canvas，绕开 iOS 丢弃 foreignObject 内 <img> 的问题。
 // 用真实 DOM 的 getBoundingClientRect 定位（导出时卡片 transform:none，实际尺寸=设计尺寸）。
 function drawCardArt(ctx, cardX, cardY, assets = {}) {
   const artEl = cardEl.querySelector('.card-art');
   if (!artEl) return;
   const cardRect = cardEl.getBoundingClientRect();
-  if (!cardRect.width) return;
-  const k = 366 / cardRect.width; // 逻辑像素 / 实际像素（k≈1）
-  const rectOf = (el) => {
-    const r = el.getBoundingClientRect();
-    return {
-      x: cardX + (r.left - cardRect.left) * k,
-      y: cardY + (r.top - cardRect.top) * k,
-      w: r.width * k,
-      h: r.height * k,
-    };
-  };
-  const a = rectOf(artEl);
+  const k = cardRect.width ? 366 / cardRect.width : 1; // 逻辑像素 / 实际像素（k≈1）
+  const a = rectInExport(artEl, cardX, cardY);
+  if (!a) return;
   const artStyle = getComputedStyle(artEl);
   const border = {
     l: parseFloat(artStyle.borderLeftWidth) * k || 0,
@@ -677,7 +728,8 @@ function drawCardArt(ctx, cardX, cardY, assets = {}) {
   const avatar = assets.avatar || avatarEl;
   const avatarNatural = imageSize(avatar);
   if (avatarEl && avatarNatural.w) {
-    const v = rectOf(avatarEl);
+    const v = rectInExport(avatarEl, cardX, cardY);
+    if (!v) return;
     const cx0 = v.x + v.w / 2;
     const cy0 = v.y + v.h / 2;
     const rad = Math.min(v.w, v.h) / 2;
@@ -707,7 +759,8 @@ function drawCardArt(ctx, cardX, cardY, assets = {}) {
   ctx.textBaseline = 'middle';
   ctx.font = '700 9px "Noto Sans SC", sans-serif';
   badges.forEach((b) => {
-    const r = rectOf(b);
+    const r = rectInExport(b, cardX, cardY);
+    if (!r) return;
     roundRectPath(ctx, r.x, r.y, r.w, r.h, Math.min(r.h, r.w) / 2);
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
     ctx.fill();
@@ -781,6 +834,8 @@ async function composeExport(cardImg, artAssets = {}) {
   ctx.fillStyle = 'rgba(0,0,0,0.18)';
   ctx.fill();
   ctx.restore();
+
+  drawCardUnderlay(ctx, cardX, cardY, CW, CH);
 
   ctx.save();
   roundRectPath(ctx, cardX, cardY, CW, CH, 16);

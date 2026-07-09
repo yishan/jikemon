@@ -748,7 +748,12 @@ body.is-export-preview-open {
   transition: none !important;
 }
 .card.is-exporting {
+  background: transparent !important;
+  box-shadow: none !important;
   transform: none !important;
+}
+.card.is-exporting .holo {
+  display: none !important;
 }
 
 @media (max-width: 820px) {
