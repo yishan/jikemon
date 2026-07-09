@@ -233,6 +233,45 @@ body.is-duel-page .masthead {
   margin-bottom: 30px;
   position: relative;
 }
+body.is-duel-page .masthead h1 {
+  position: relative;
+  z-index: 0;
+  /* 刀痕横穿金色标题，补一圈深色描边保证文字可读 */
+  text-shadow:
+    0 3px 0 #4a3a10,
+    0 0 5px rgba(16, 36, 28, 0.65),
+    0 0 2px rgba(16, 36, 28, 0.9),
+    0 8px 24px rgba(0, 0, 0, 0.5);
+}
+/* 标题背后的刀痕：右上劈向左下，暗边 + 金色渐变刀身 + 亮芯，附两道短副痕与飞溅碎屑 */
+body.is-duel-page .masthead h1::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(470px, 92vw);
+  height: 160px;
+  transform: translate(-50%, -52%);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 560 190'%3E%3Cdefs%3E%3ClinearGradient id='a' x1='1' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23ffe411'/%3E%3Cstop offset='.5' stop-color='%23e8c565'/%3E%3Cstop offset='1' stop-color='%23a97e24'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg opacity='.8'%3E%3Cpath fill='%233c2e0a' opacity='.9' d='M544 16Q300 56 16 172 300 114 544 16Z'/%3E%3Cpath fill='url(%23a)' d='M542 18Q300 64 20 170 300 106 542 18Z'/%3E%3Cpath fill='%23fff6c9' opacity='.9' d='M538 22Q300 74 26 166 300 90 538 22Z'/%3E%3C/g%3E%3Cg opacity='.55'%3E%3Cpath fill='%233c2e0a' opacity='.85' d='M472 6Q380 24 288 64 380 48 472 6Z'/%3E%3Cpath fill='url(%23a)' d='M470 8Q380 28 292 62 380 44 470 8Z'/%3E%3Cpath fill='%233c2e0a' opacity='.85' d='M302 116Q180 138 56 188 180 166 302 116Z'/%3E%3Cpath fill='url(%23a)' d='M300 118Q180 144 60 186 180 160 300 118Z'/%3E%3C/g%3E%3Cpath fill='%23fff6c9' d='M468 34l14-9-4 15Z'/%3E%3Cpath fill='%23ffe411' opacity='.85' d='M352 60l10-7-2 12Z'/%3E%3Cpath fill='%23fff6c9' opacity='.9' d='M520 12l9-6-2 10Z'/%3E%3Cpath fill='%23ffe411' opacity='.75' d='M428 50l9-6-2 10Z'/%3E%3Cpath fill='%23fff6c9' opacity='.7' d='M238 118l8-5-2 9Z'/%3E%3Cpath fill='%23ffe411' opacity='.75' d='M150 138l11-7-3 12Z'/%3E%3Cpath fill='%23e8c565' opacity='.7' d='M88 166l9-6-2 10Z'/%3E%3Cpath fill='%23ffe411' opacity='.7' d='M306 92l8-5-2 9Z'/%3E%3C/svg%3E") center / contain no-repeat;
+  filter: drop-shadow(0 0 16px rgba(232, 197, 101, 0.2));
+  opacity: 0.88;
+  pointer-events: none;
+  z-index: -1;
+  animation: slash-reveal 0.4s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+@keyframes slash-reveal {
+  from { clip-path: inset(0 0 100% 100%); }
+  to { clip-path: inset(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.is-duel-page .masthead h1::before { animation: none; }
+}
+/* 精灵球与副标题抬到刀痕之上，避免被划过遮挡 */
+body.is-duel-page .masthead .pokeball,
+body.is-duel-page .masthead .sub {
+  position: relative;
+  z-index: 1;
+}
 body.is-duel-page .masthead h1 .slash {
   display: inline-block;
   margin: 0 -2px;
