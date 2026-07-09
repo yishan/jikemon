@@ -14,6 +14,7 @@ const actions = $('actions');
 let currentCardNo = ''; // 当前卡片编号（如 No.1228），用于导出文件名
 let currentCard = null; // 当前卡片对象，供导出合成读取属性/特质
 let inlineExportPreview = null;
+let exportPreviewViewportContent = null;
 let catchProgressFrame = 0;
 
 // 从输入中提取用户 ID：支持 /u/ /user/ /users/ 路径或裸 ID（仅用作地址栏回退，权威 ID 用响应里的 username）
@@ -498,7 +499,47 @@ function closeInlineExportPreview() {
   inlineExportPreview.el.remove();
   URL.revokeObjectURL(inlineExportPreview.url);
   document.body.classList.remove('is-export-preview-open');
+  unlockExportPreviewViewport();
   inlineExportPreview = null;
+}
+
+function lockExportPreviewViewport() {
+  const meta = document.querySelector('meta[name="viewport"]');
+  if (!meta) return;
+  if (exportPreviewViewportContent === null) exportPreviewViewportContent = meta.getAttribute('content') || '';
+  meta.setAttribute(
+    'content',
+    'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover'
+  );
+}
+
+function unlockExportPreviewViewport() {
+  const meta = document.querySelector('meta[name="viewport"]');
+  if (!meta || exportPreviewViewportContent === null) return;
+  meta.setAttribute('content', exportPreviewViewportContent);
+  exportPreviewViewportContent = null;
+}
+
+function blockPreviewZoomGesture(e) {
+  e.preventDefault();
+}
+
+function blockPreviewMultiTouch(e) {
+  if (e.touches?.length > 1) e.preventDefault();
+}
+
+function blockPreviewWheelZoom(e) {
+  if (e.ctrlKey || e.metaKey) e.preventDefault();
+}
+
+function lockPreviewGestures(el) {
+  const active = { passive: false };
+  el.addEventListener('touchmove', blockPreviewMultiTouch, active);
+  el.addEventListener('gesturestart', blockPreviewZoomGesture, active);
+  el.addEventListener('gesturechange', blockPreviewZoomGesture, active);
+  el.addEventListener('gestureend', blockPreviewZoomGesture, active);
+  el.addEventListener('wheel', blockPreviewWheelZoom, active);
+  el.addEventListener('dblclick', blockPreviewZoomGesture);
 }
 
 function showInlineExportPreview(blob) {
@@ -522,10 +563,13 @@ function showInlineExportPreview(blob) {
   img.src = url;
   img.alt = '';
   img.decoding = 'async';
+  img.draggable = false;
 
   el.append(hint, close, img);
+  lockPreviewGestures(el);
   document.body.append(el);
   document.body.classList.add('is-export-preview-open');
+  lockExportPreviewViewport();
   inlineExportPreview = { el, url };
 }
 

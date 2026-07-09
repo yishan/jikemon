@@ -644,6 +644,7 @@ body.is-export-preview-open {
   height: 100vh;
   overflow: hidden;
   overscroll-behavior: none;
+  touch-action: none;
 }
 
 .mobile-export-preview {
@@ -655,6 +656,7 @@ body.is-export-preview-open {
   align-items: center;
   overflow: hidden;
   overscroll-behavior: contain;
+  touch-action: none;
   color: var(--paper);
   background:
     radial-gradient(1000px 520px at 50% -12%, var(--felt-hi), transparent 70%),
@@ -695,6 +697,7 @@ body.is-export-preview-open {
   height: auto;
   margin: 10px auto max(12px, env(safe-area-inset-bottom, 0px));
   object-fit: contain;
+  touch-action: none;
   -webkit-touch-callout: default;
   -webkit-user-select: auto;
   user-select: auto;
