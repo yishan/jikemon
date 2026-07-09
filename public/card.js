@@ -139,6 +139,13 @@ const RARITIES = [
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const log10 = (v) => Math.log10(Math.max(1, v));
+const roundTo10 = (v) => Math.round(v / 10) * 10;
+
+// 250 在中文语境中容易产生不好的联想；只在最终展示值恰好为 250 时轻微让位一档。
+// 根据未取整原始值决定偏向 240 或 260，避免所有 250 都机械地改向同一边。
+function avoidAwkward250(displayValue, rawValue = displayValue) {
+  return displayValue === 250 ? (rawValue < 250 ? 240 : 260) : displayValue;
+}
 
 // 稳定字符串哈希：同一圈子永远得到同一结果
 function hashStr(s) {
@@ -223,7 +230,8 @@ export function buildCard({ user, posts }) {
   const fScore = clamp(log10(followers + 1) / 5, 0, 1); // 10 万粉丝 = 满分
   const lScore = clamp(log10(liked + 1) / 5.5, 0, 1);
   const aScore = clamp(years / 10, 0, 1);
-  const hp = clamp(Math.round((40 + 260 * (0.5 * fScore + 0.3 * lScore + 0.2 * aScore)) / 10) * 10, 40, 300);
+  const hpRaw = 40 + 260 * (0.5 * fScore + 0.3 * lScore + 0.2 * aScore);
+  const hp = avoidAwkward250(clamp(roundTo10(hpRaw), 40, 300), hpRaw);
 
   // ---- 进化阶段：即龄 × 影响力 综合分驱动分级；6 年+ 且 5000 粉+ 解锁「超进化」彩蛋 ----
   // evoScore = 即龄 0.3 + 粉丝 0.6 + 获赞 0.1：影响力主导、时间次之，
@@ -262,7 +270,10 @@ export function buildCard({ user, posts }) {
     moves.push(buildBehaviorMove({ picRatio, originalRatio, avgLikes, postsPerDay, type, respectBonus }));
     moves.push({
       name: '沉默潜水', cost: 2, type, origin: '行为特征',
-      dmg: clamp(Math.round(log10(followers + 1) * 20 / 10) * 10 + respectBonus, 20, 250),
+      dmg: avoidAwkward250(
+        clamp(roundTo10(log10(followers + 1) * 20) + respectBonus, 20, 250),
+        log10(followers + 1) * 20 + respectBonus
+      ),
       text: '长期潜水积蓄能量。使用后跳过一回合，但下回合伤害翻倍。',
     });
   }
@@ -339,7 +350,7 @@ function buildTopicMove(topic, respectBonus, followers) {
   const pool = SKILL_POOL[typeKey] || SKILL_POOL.colorless;
   const skill = pool[hashStr(topic.name) % pool.length];
   const base = topic.likes * 8 + topic.comments * 12 + topic.reposts * 15 + topic.count * 10 + log10(followers + 1) * 10;
-  const dmg = clamp(Math.round(base / 10) * 10, 10, 200) + respectBonus;
+  const dmg = avoidAwkward250(clamp(roundTo10(base), 10, 200) + respectBonus, base + respectBonus);
   return {
     name: skill.name,
     cost: clamp(Math.ceil(topic.count / 2), 1, 3),
@@ -352,7 +363,8 @@ function buildTopicMove(topic, respectBonus, followers) {
 
 // 行为技能：由内容形态决定（无圈子数据时的补位）
 function buildBehaviorMove({ picRatio, originalRatio, avgLikes, postsPerDay, type, respectBonus }) {
-  const dmg = clamp(Math.round((avgLikes * 10 + picRatio * 30) / 10) * 10, 10, 200) + respectBonus;
+  const rawDmg = avgLikes * 10 + picRatio * 30;
+  const dmg = avoidAwkward250(clamp(roundTo10(rawDmg), 10, 200) + respectBonus, rawDmg + respectBonus);
   const cost = clamp(Math.ceil(postsPerDay), 1, 3);
   const base = { cost, dmg, type, origin: '行为特征' };
   if (picRatio >= 0.4)
