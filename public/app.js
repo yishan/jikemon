@@ -715,15 +715,6 @@ function duelSideMarkup(side, card) {
   const inputValue = card ? duelProfileUrl(card) : duelSideDraft[side] || '';
   return `
     <div class="duel-card-side duel-card-side--${side}">
-      <div class="duel-card-meta${card ? '' : ' duel-card-meta--mystery'}">${metaHtml}</div>
-      <div class="card-tilt duel-tilt" id="duel${name}Tilt">
-        <article class="card duel-card" id="duel${name}Card"></article>
-        ${
-          card
-            ? ''
-            : `<button type="button" class="open-btn duel-challenge-btn" id="duel${name}ChallengeBtn" data-duel-side="${side}">挑战</button>`
-        }
-      </div>
       ${
         card
           ? `<button class="duel-swap-btn" id="duel${name}SwapBtn" data-duel-side="${side}" type="button">↻ 更换即可梦</button>`
@@ -743,6 +734,15 @@ function duelSideMarkup(side, card) {
           <span class="seeker-loading__text">精灵球正在捕捉中</span>
         </div>
       </form>
+      <div class="card-tilt duel-tilt" id="duel${name}Tilt">
+        <article class="card duel-card" id="duel${name}Card"></article>
+        ${
+          card
+            ? ''
+            : `<button type="button" class="open-btn duel-challenge-btn" id="duel${name}ChallengeBtn" data-duel-side="${side}">挑战</button>`
+        }
+      </div>
+      <div class="duel-card-meta${card ? '' : ' duel-card-meta--mystery'}">${metaHtml}</div>
     </div>
   `;
 }
