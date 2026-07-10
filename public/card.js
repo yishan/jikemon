@@ -296,8 +296,9 @@ export function buildCard({ user, posts }) {
     : counter.resist;
   const resistance = resistKey ? TYPES[resistKey] : null;
 
-  // 手速：发帖越频繁手速越高（日更狂魔 ★★★，潜水党 ★）
-  const handSpeed = postsPerDay >= 1.5 ? 3 : postsPerDay >= 0.5 ? 2 : 1;
+  // 手速：发帖越频繁手速越高（日更狂魔 ★★★，潜水党 ★）。
+  // postsPerDay 是按账龄摊平的终身平均，老用户会被稀释，阈值不宜过高。
+  const handSpeed = postsPerDay >= 3 ? 3 : postsPerDay >= 1 ? 2 : 1;
 
   // ---- 突出特质：由最强维度决定（超进化直接封「魅力」），写进图鉴 ----
   const traitPool = [

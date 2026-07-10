@@ -473,37 +473,29 @@ function renderDossier(c) {
   const moveLines = c.moves
     .map((m) => {
       const t = m.type || c.type;
-      return `${esc(m.origin || '行为特征')} → ${t.icon} ${t.name}系「${esc(m.name)}」`;
+      return `${t.icon} ${t.name}系「${esc(m.name)}」`;
     })
     .join('<br/>');
   dossier.innerHTML = `
-    <h2>即可梦档案</h2>
+    <h2>即可梦档案<span class="dossier-en">INFO</span></h2>
     <dl>
-      <dt>即友名称</dt><dd><b>${esc(c.name)}</b>${
+      <dt>名称</dt><dd><b>${esc(c.name)}</b>${
         c.username && !/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(c.username) ? `（@${esc(c.username)}）` : ''
       }</dd>
-      <dt>稀有度评分</dt><dd>${c.rarityScore} / 100 → <b>${c.rarity.key}（${c.rarity.label}）</b></dd>
-      <dt>突出特质</dt><dd><b>${c.trait}</b>（${c.traitWhy}）</dd>
-      <dt>属性判定</dt><dd>${c.type.icon} ${c.type.name}系（圈子投票 + 简介关键词）</dd>
+      <dt>稀有度</dt><dd><b>${c.rarity.key} · ${c.rarity.label}</b></dd>
+      <dt>突出特质</dt><dd><b>${c.trait}</b></dd>
+      <dt>属性判定</dt><dd>${c.type.icon} ${c.type.name}系</dd>
       <dt>技能匹配</dt><dd>${moveLines}</dd>
-      ${
-        c.respected > 0
-          ? `<dt>夸夸强化</dt><dd>被夸 ${c.respected} 次 → 技能攻击 +${c.respectBonus}</dd>`
-          : ''
-      }
-      <dt>进化阶段</dt><dd>即龄 ${c.metrics.years} 年 × 影响力 → 综合 ${c.metrics.evoScore}/100 → ${c.stage.label}${
+      ${c.respected > 0 ? `<dt>夸夸强化</dt><dd>技能攻击 +${c.respectBonus}</dd>` : ''}
+      <dt>进化阶段</dt><dd>${c.stage.label} ← 即龄 × 影响力${
         c.stage.mega ? '（6 年+ 且 5000 粉+ 解锁）' : ''
       }</dd>
-      <dt>粉丝 / 获赞</dt><dd>${c.metrics.followers} / ${c.metrics.liked} → HP ${c.hp}</dd>
-      <dt>发帖频率</dt><dd>约 ${c.metrics.postsPerDay} 条 / 天 → 网感 ${'★'.repeat(c.handSpeed)}</dd>
-      ${
-        c.weaknessTopic
-          ? `<dt>弱点软肋</dt><dd>本命圈子「${esc(c.weaknessTopic)}」→ 一聊就上头</dd>`
-          : ''
-      }
+      <dt>HP 值</dt><dd><b>${c.hp}</b> ← 粉丝 ${c.metrics.followers} / 获赞 ${c.metrics.liked}</dd>
+      <dt>网感</dt><dd>${'★'.repeat(c.handSpeed)} ← 约 ${c.metrics.postsPerDay} 条 / 天</dd>
+      ${c.weaknessTopic ? '<dt>弱点软肋</dt><dd>本命圈子一聊就上头</dd>' : ''}
       ${
         c.resistance
-          ? `<dt>免疫领域</dt><dd>几乎不碰 ${c.resistance.icon} ${c.resistance.name}系内容 → 抵抗力 -30</dd>`
+          ? `<dt>免疫领域</dt><dd>几乎不碰 ${c.resistance.icon} ${c.resistance.name}系内容</dd>`
           : ''
       }
     </dl>
@@ -1059,8 +1051,8 @@ attachTilt(tilt, cardEl);
  * 能完整保留 mix-blend-mode 镭射层与渐变卡框（html2canvas 不支持会发灰）。
  * 字体不用它自带的嵌入逻辑（会拉取 Noto Sans SC 的 200+ 个子集文件直至挂起），
  * 而是用 Google Fonts 的 text= 参数按卡面实际字符请求迷你子集，自行内联。 */
-async function buildFontEmbedCSS() {
-  const chars = [...new Set(cardEl.textContent + 'HP0123456789×-★ ')].join('');
+async function buildFontEmbedCSS(extraText = '') {
+  const chars = [...new Set(cardEl.textContent + extraText + 'HP0123456789×-★ ')].join('');
   const text = encodeURIComponent(chars);
   const families = [
     'ZCOOL+QingKe+HuangYou',
@@ -1290,9 +1282,9 @@ function roundRectPath(ctx, x, y, w, h, r) {
 }
 
 // 把卡片矢量图合成到竖版分享图上。
-// variant = 'full'：图鉴海报（深色背景 + 背光 + 顶部标题 + 底部特质/网址，参考 gitfut）
+// variant = 'full'：图鉴海报（深色背景 + 背光 + 顶部标题 + 卡牌与右侧档案 + 底部特质/网址）
 // variant = 'plain'：纯卡牌（小边距，仅卡牌本体 + 下方金色 JIKÉMON）
-async function composeExport(cardImg, artAssets = {}, variant = 'full') {
+async function composeExport(cardImg, artAssets = {}, variant = 'full', dossierImg = null) {
   const S = 3; // 输出倍率
   const CW = 366, CH = 512; // 卡片逻辑尺寸
   const full = variant === 'full';
@@ -1303,7 +1295,18 @@ async function composeExport(cardImg, artAssets = {}, variant = 'full') {
   const GAP_BOT = full ? 40 : 26;
   const FOOT_H = full ? 122 : 18;
   const BOT = full ? 46 : 30;
-  const W = CW + PAD_X * 2;
+
+  // 图鉴版右侧档案面板：与卡牌顶部对齐，高于卡牌时等比缩小到同高
+  const hasDossier = full && dossierImg?.naturalWidth > 0;
+  const D_GAP = 36;
+  let DW = 0, DH = 0;
+  if (hasDossier) {
+    const dScale = Math.min(1, CH / dossierImg.naturalHeight);
+    DW = dossierImg.naturalWidth * dScale;
+    DH = dossierImg.naturalHeight * dScale;
+  }
+
+  const W = CW + PAD_X * 2 + (hasDossier ? D_GAP + DW : 0);
   const H = TOP + TITLE_H + GAP_TOP + CH + GAP_BOT + FOOT_H + BOT;
   const cardX = PAD_X, cardY = TOP + TITLE_H + GAP_TOP;
   const cx = W / 2, ccx = cardX + CW / 2, ccy = cardY + CH / 2;
@@ -1358,6 +1361,21 @@ async function composeExport(cardImg, artAssets = {}, variant = 'full') {
   // iOS WebKit 会丢弃 foreignObject 内的 <img>（波纹+头像），SVG 里画面区是空的；
   // 按真实 DOM 布局把波纹与头像直接画到 canvas，跨平台一致（桌面是对齐叠加，结果不变）。
   drawCardArt(ctx, cardX, cardY, artAssets);
+
+  // 档案面板：卡牌右侧，顶部与卡牌对齐；先铺桌面色圆角底（带投影），半透明面板叠上观感与网页一致
+  if (hasDossier) {
+    const dX = cardX + CW + D_GAP;
+    const dY = cardY;
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.45)';
+    ctx.shadowBlur = 26;
+    ctx.shadowOffsetY = 14;
+    roundRectPath(ctx, dX, dY, DW, DH, 14);
+    ctx.fillStyle = '#10241c';
+    ctx.fill();
+    ctx.restore();
+    ctx.drawImage(dossierImg, dX, dY, DW, DH);
+  }
 
   // 文本
   await waitForFontsReady();
@@ -1420,18 +1438,27 @@ async function composeCardPngBlob(variant = 'plain') {
     await waitForPaint();
     const artAssets = await collectExportArtAssets();
 
-    const fontEmbedCSS = await buildFontEmbedCSS();
+    const withDossier = variant === 'full' && !dossier.hidden;
+    const fontEmbedCSS = await buildFontEmbedCSS(withDossier ? dossier.textContent : '');
     // 只用 toSvg 拿矢量快照，光栅化自己做（库内置的 toPng 在部分环境下会挂起）。
     // 头像已预解码，单次调用即可；cacheBust 强制重新拉取，避免切换用户后复用上个用户的缓存图。
     const svgUrl = await htmlToImage.toSvg(cardEl, { fontEmbedCSS, cacheBust: true });
 
     // SVG decode() 在后台/隐藏页可能不会恢复；onload 对隐藏页更可靠。
     const img = await loadImage(svgUrl, { timeoutMs: 8000, label: 'SVG' });
+
+    // 图鉴版：档案面板一起快照，画在卡牌右侧（纯文字，无 foreignObject 图片兼容问题）
+    let dossierImg = null;
+    if (withDossier) {
+      const dossierSvg = await htmlToImage.toSvg(dossier, { fontEmbedCSS, cacheBust: true });
+      dossierImg = await loadImage(dossierSvg, { timeoutMs: 8000, label: '档案' });
+    }
+
     // 再等一小会，给 iOS 光栅化 foreignObject 内嵌图片的时间
     // （用 setTimeout 而非 rAF：后台/隐藏标签页 rAF 会被暂停导致卡死）
     await wait(120);
 
-    const composed = await composeExport(img, artAssets, variant);
+    const composed = await composeExport(img, artAssets, variant, dossierImg);
     return await canvasToPngBlob(composed);
   } finally {
     cardEl.classList.remove('is-exporting');
