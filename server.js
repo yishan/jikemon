@@ -197,7 +197,8 @@ function buildMetaTags(req) {
   const base = getPublicBaseUrl(req);
   const pageUrl = new URL(req.url, base).href;
   const imageUrl = new URL('/og.png', base).href;
-  const isDuel = /^\/u\/[\w-]+\/vs\/[\w-]+$/.test(new URL(req.url, base).pathname);
+  const pathname = new URL(req.url, base).pathname;
+  const isDuel = /^\/vs\/?$/.test(pathname) || /^\/u\/[\w-]+\/vs(\/[\w-]+)?\/?$/.test(pathname);
   const title = isDuel ? '即可梦决斗 · Jikémon DUEL' : '即可梦图鉴 · Jikémon';
   const description = isDuel
     ? '两位即友的专属即可梦卡牌决斗。'
@@ -283,8 +284,9 @@ async function handleRequest(req, res) {
     return serveStatic('/og.png', res, req.method);
   }
   if (url.pathname === '/') return serveIndex(req, res);
-  // VS 直达链接：先不在首页放入口，只支持直接访问 /u/<left>/vs/<right>
-  if (/^\/u\/[\w-]+\/vs\/[\w-]+$/.test(url.pathname)) return serveIndex(req, res);
+  // VS 对战：/vs（双方待定）、/u/<left>/vs（左侧带入）、/u/<left>/vs/<right>（直达对决）
+  if (/^\/vs\/?$/.test(url.pathname)) return serveIndex(req, res);
+  if (/^\/u\/[\w-]+\/vs(\/[\w-]+)?\/?$/.test(url.pathname)) return serveIndex(req, res);
   // 直达链接：/u/<id> 与即刻个人页同构，把 web.okjike.com 换成本站域名即可直接出卡
   if (/^\/u\/[\w-]+$/.test(url.pathname)) return serveIndex(req, res);
   serveStatic(url.pathname, res, req.method);

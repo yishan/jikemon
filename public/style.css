@@ -605,6 +605,26 @@ body.is-duel-page .masthead h1 .slash {
   line-height: 1.6;
 }
 
+/* —— 对战空位：问号卡上的「挑战」按钮，比首页「捕捉」略收一号 —— */
+.duel-challenge-btn {
+  padding: 13px 34px;
+  font-size: 20px;
+  letter-spacing: 4px;
+}
+/* 空位的元信息条整体置灰，等待挑战者现身 */
+.duel-card-meta--mystery strong,
+.duel-card-meta--mystery span {
+  color: #9db8a7;
+}
+/* 待命面板：比分未知置灰 */
+.duel-board--pending .duel-score span {
+  color: #6b7c73;
+  text-shadow: none;
+}
+.duel-board--pending .duel-verdict {
+  margin-bottom: 4px;
+}
+
 /* 3D 倾斜容器。--m 为窄屏等比缩放系数（由 JS 按可用宽度计算，桌面端为 1）。
    卡片用 transform: scale 缩放，容器高度按同比例收缩以回收底部空白。 */
 .card-tilt {
@@ -1013,7 +1033,14 @@ body.is-duel-page .masthead h1 .slash {
 }
 
 /* ============ 动作 & 页脚 ============ */
-.actions { text-align: center; margin-top: 34px; }
+.actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 34px;
+}
+.actions[hidden] { display: none; }
 .actions button {
   padding: 12px 32px;
   font: 700 14px 'Noto Sans SC', sans-serif;
@@ -1033,6 +1060,7 @@ body.is-duel-page .masthead h1 .slash {
   display: inline-flex;
   gap: 6px;
 }
+.export-group[hidden] { display: none; }
 .actions .export-menu-btn {
   padding: 12px 16px;
   letter-spacing: 0;
@@ -1053,13 +1081,22 @@ body.is-duel-page .masthead h1 .slash {
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
 }
 .actions .export-menu button {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
   width: 100%;
   padding: 10px 14px;
   text-align: left;
   letter-spacing: 1px;
   border: none;
   border-radius: 9px;
+}
+.actions .export-menu button svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  opacity: 0.85;
 }
 .actions .export-menu button:hover { background: var(--gold); color: #3a2503; }
 

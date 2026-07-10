@@ -10,9 +10,12 @@ const cardEl = $('card');
 const tilt = $('tilt');
 const dossier = $('dossier');
 const actions = $('actions');
+const exportGroup = $('exportGroup');
+const duelEntryBtn = $('duelEntryBtn');
 
 let currentCardNo = ''; // 当前卡片编号（如 No.1228），用于导出文件名
 let currentCard = null; // 当前卡片对象，供导出合成读取属性/特质
+let currentProfileData = null; // 当前卡片的原始接口数据，进入对战页时带入左侧
 let currentDuel = null; // 当前 VS 对战对象
 let currentMode = 'card';
 let inlineExportPreview = null;
@@ -21,6 +24,8 @@ let catchProgressFrame = 0;
 let duelRevealTimers = [];
 let duelLoadSeq = 0;
 let duelLoading = false;
+const duelSides = { left: null, right: null }; // 对战双方的原始接口数据，空位为 null
+const duelSideDraft = { left: '', right: '' }; // 空位输入框草稿，重渲染时保留用户已输入的链接
 const profileCache = new Map();
 const duelPairCache = new Map();
 
@@ -141,6 +146,7 @@ form.addEventListener('submit', async (e) => {
     const data = await fetchProfileCached(id);
     const card = buildCard(data);
     await finishCatchProgress();
+    currentProfileData = data;
     render(card);
     setStatus('');
     // 地址栏同步为可分享的直达链接：用响应里的权威 username（okjk.co 短链等也能正确归一）
@@ -153,7 +159,9 @@ form.addEventListener('submit', async (e) => {
     renderPlaceholder();
     openBtn.hidden = false;
     dossier.hidden = true;
-    actions.hidden = true;
+    currentCard = null;
+    currentProfileData = null;
+    updateHomeActions();
   } finally {
     stopCatchProgress();
     openBtn.disabled = false;
@@ -163,6 +171,28 @@ form.addEventListener('submit', async (e) => {
 
 initRoute();
 
+// 首页动作条（对战入口 + 导出组）：仅在捕捉到卡牌后展示
+function updateHomeActions() {
+  actions.hidden = !currentCard;
+  if (exportGroup) exportGroup.hidden = !currentCard;
+}
+
+// 首页「即可梦对战」入口：带着当前卡牌（若有）进入对战页左侧，右侧留空等待挑战者
+duelEntryBtn?.addEventListener('click', () => {
+  if (currentMode === 'duel') return;
+  duelSides.left = currentProfileData || null;
+  duelSides.right = null;
+  duelSideDraft.left = '';
+  duelSideDraft.right = '';
+  const leftId = currentProfileData?.user?.username;
+  history.pushState(null, '', leftId ? `/u/${leftId}/vs` : '/vs');
+  setupDuelChrome();
+  renderDuelLayout();
+});
+
+// 站内用 pushState 进入对战页后，浏览器返回时按新地址重新初始化
+window.addEventListener('popstate', () => location.reload());
+
 function initRoute() {
   const duelPath = location.pathname.match(/^\/u\/([\w-]+)\/vs\/([\w-]+)$/);
   if (duelPath) {
@@ -170,8 +200,20 @@ function initRoute() {
     return;
   }
 
+  // 对战入口页：/u/<id>/vs 带入左侧，/vs 双方待定（均为问号卡 + 「挑战」按钮）
+  const duelSetupPath = location.pathname.match(/^\/u\/([\w-]+)\/vs\/?$/);
+  if (duelSetupPath) {
+    enterDuelSetup(duelSetupPath[1]);
+    return;
+  }
+  if (/^\/vs\/?$/.test(location.pathname)) {
+    enterDuelSetup(null);
+    return;
+  }
+
   // 初始：先渲染神秘占位卡（全「?」+ 中央抓取按钮）
   renderPlaceholder();
+  updateHomeActions();
 
   // 直达链接：访问 /u/<id> 时自动填入并生成。
   // 即刻推广场景：把 web.okjike.com/u/xxx 的域名换成本站域名，落地即出卡。
@@ -285,17 +327,17 @@ function celebrate() {
   }, 130);
 }
 
-// 抓取前的神秘占位卡：各字段用「?」，中央浮着抓取按钮，吸引用户开卡
-function renderPlaceholder() {
-  cardEl.dataset.rarity = 'C'; // 中性银灰卡框
-  cardEl.classList.add('is-mystery');
-  cardEl.classList.remove('reveal');
-  cardEl.style.setProperty('--type-color', '#b7b1a1');
-  cardEl.style.setProperty('--type-bg', '#efece2');
-  cardEl.style.setProperty('--ripple-strong', '#e2ded1');
-  cardEl.style.setProperty('--ripple-weak', '#f5f2ea');
+// 神秘占位卡：各字段用「?」。首页与对战空位共用，hint 为卡底提示文案
+function renderMysteryCardInto(el, hint) {
+  el.dataset.rarity = 'C'; // 中性银灰卡框
+  el.classList.add('is-mystery');
+  el.classList.remove('reveal');
+  el.style.setProperty('--type-color', '#b7b1a1');
+  el.style.setProperty('--type-bg', '#efece2');
+  el.style.setProperty('--ripple-strong', '#e2ded1');
+  el.style.setProperty('--ripple-weak', '#f5f2ea');
   const q = '？？？？？？？？？？？？？？？？？？';
-  cardEl.innerHTML = `
+  el.innerHTML = `
     <div class="card-inner">
       <div class="card-top">
         <span class="stage-chip">？？</span>
@@ -324,10 +366,15 @@ function renderPlaceholder() {
         <div class="cb-cell"><b>抵抗力</b><span class="cb-val">?</span></div>
         <div class="cb-cell"><b>网感</b><span class="cb-val">?</span></div>
       </div>
-      <p class="card-flavor mystery-hint">在上方粘贴你的即刻主页链接，点击中央「捕捉」，开启属于你的专属即可梦。</p>
+      <p class="card-flavor mystery-hint">${hint}</p>
       <div class="card-foot"><span>No.????</span><span>illus. JIKÉMON</span><span class="rarity-mark">?</span></div>
     </div>
   `;
+}
+
+// 抓取前的首页神秘占位卡：中央浮着抓取按钮，吸引用户开卡
+function renderPlaceholder() {
+  renderMysteryCardInto(cardEl, '在上方粘贴你的即刻主页链接，点击中央「捕捉」，开启属于你的专属即可梦。');
 }
 
 // 把十六进制色与白色按比例混合，返回具体 rgb()。
@@ -513,32 +560,74 @@ function render(c) {
   renderDossier(c);
 
   arena.hidden = false;
-  actions.hidden = false;
+  updateHomeActions();
   dossier.hidden = false;
   setTimeout(celebrate, 140); // 与卡片弹出同步爆开礼花
 }
 
-async function loadDuelRoute(leftId, rightId) {
-  const loadToken = ++duelLoadSeq;
+// 切换到对战页的页面骨架：标题、隐藏首页表单/动作条/档案
+function setupDuelChrome() {
   currentMode = 'duel';
+  currentCard = null;
+  currentCardNo = '';
   document.body.classList.add('is-duel-page');
   const titleEl = document.querySelector('.masthead h1');
   const subEl = document.querySelector('.masthead .sub');
   if (titleEl) titleEl.textContent = '即可梦决斗';
   if (subEl) subEl.textContent = 'JIKÉMON DUEL';
+  document.title = '即可梦决斗 · Jikémon DUEL';
   form.hidden = true;
   actions.hidden = true;
   dossier.hidden = true;
   openBtn.hidden = true;
   arena.hidden = false;
   arena.className = 'arena duel-arena';
+  setStatus('');
+}
+
+// 对战设置态入口：leftId 存在时带入左侧并自动捕捉，否则双方均为问号卡
+function enterDuelSetup(leftId) {
+  duelSides.left = null;
+  duelSides.right = null;
+  setupDuelChrome();
+  if (leftId) duelSideDraft.left = `https://web.okjike.com/u/${leftId}`;
+  renderDuelPending();
+  if (leftId) $('duelLeftForm')?.requestSubmit();
+}
+
+// 按当前双方状态渲染：双方齐全进入对决，否则渲染带问号空位的设置态
+function renderDuelLayout({ syncUrl = false } = {}) {
+  if (duelSides.left && duelSides.right) {
+    renderDuelData({ left: duelSides.left, right: duelSides.right });
+    return;
+  }
+  renderDuelPending();
+  if (syncUrl) updateDuelSetupUrl();
+}
+
+// 设置态地址栏：仅左侧可表达为 /u/<id>/vs，其余情况回落到 /vs
+function updateDuelSetupUrl() {
+  const leftId = duelSides.left?.user?.username;
+  history.replaceState(null, '', leftId ? `/u/${leftId}/vs` : '/vs');
+}
+
+// 重渲染前把空位输入框里的草稿收起来，避免用户已粘贴的链接被丢掉
+function captureDuelDrafts() {
+  const leftInput = $('duelLeftInput');
+  const rightInput = $('duelRightInput');
+  if (leftInput) duelSideDraft.left = leftInput.value;
+  if (rightInput) duelSideDraft.right = rightInput.value;
+}
+
+async function loadDuelRoute(leftId, rightId) {
+  const loadToken = ++duelLoadSeq;
+  setupDuelChrome();
   arena.innerHTML = `
     <section class="duel-loading" role="status" aria-live="polite">
       <span class="catch-ball" aria-hidden="true"></span>
       <strong>正在捕捉双方即可梦</strong>
     </section>
   `;
-  setStatus('');
 
   try {
     const data = await fetchDuelCached(leftId, rightId);
@@ -556,6 +645,8 @@ async function loadDuelRoute(leftId, rightId) {
 }
 
 function renderDuelData(data, leftFallback, rightFallback) {
+  duelSides.left = data.left;
+  duelSides.right = data.right;
   const left = buildCard(data.left);
   const right = buildCard(data.right);
   const duel = buildDuel(left, right);
@@ -574,46 +665,112 @@ function duelProfileUrl(card) {
   return card.username ? `https://web.okjike.com/u/${card.username}` : '';
 }
 
-function duelSeekerMarkup(side, card) {
+// 对战单侧：card 为空时渲染问号空位（卡上浮「挑战」按钮 + 常显链接输入框），
+// 有卡时渲染真卡 + 「更换即可梦」按钮（点击重置回问号空位）+ 隐藏的输入框
+function duelSideMarkup(side, card) {
   const name = side === 'left' ? 'Left' : 'Right';
   const label = side === 'left' ? '左侧即可梦主页链接' : '右侧即可梦主页链接';
+  const metaHtml = card
+    ? `<strong>${esc(card.name)}</strong><span>${card.type.icon} ${card.type.name}系 · ${card.rarity.key}</span>`
+    : '<strong>神秘挑战者</strong><span>？？系 · ?</span>';
+  const inputValue = card ? duelProfileUrl(card) : duelSideDraft[side] || '';
   return `
-    <button class="duel-swap-btn" id="duel${name}SwapBtn" data-duel-side="${side}" type="button">
-      ↻ 更换即可梦
-    </button>
-    <form class="seeker duel-seeker is-hidden" id="duel${name}Form" data-duel-side="${side}" aria-label="${label}">
-      <input
-        id="duel${name}Input"
-        type="text"
-        value="${esc(duelProfileUrl(card))}"
-        placeholder="请输入即刻主页链接..."
-        spellcheck="false"
-      />
-      <div class="seeker-loading" role="status" aria-live="polite">
-        <span class="seeker-loading__bar" aria-hidden="true"></span>
-        <span class="catch-ball" aria-hidden="true"></span>
-        <span class="seeker-loading__text">精灵球正在捕捉中</span>
+    <div class="duel-card-side duel-card-side--${side}">
+      <div class="duel-card-meta${card ? '' : ' duel-card-meta--mystery'}">${metaHtml}</div>
+      <div class="card-tilt duel-tilt" id="duel${name}Tilt">
+        <article class="card duel-card" id="duel${name}Card"></article>
+        ${
+          card
+            ? ''
+            : `<button type="button" class="open-btn duel-challenge-btn" id="duel${name}ChallengeBtn" data-duel-side="${side}">挑战</button>`
+        }
       </div>
-    </form>
+      ${
+        card
+          ? `<button class="duel-swap-btn" id="duel${name}SwapBtn" data-duel-side="${side}" type="button">↻ 更换即可梦</button>`
+          : ''
+      }
+      <form class="seeker duel-seeker${card ? ' is-hidden' : ''}" id="duel${name}Form" data-duel-side="${side}" aria-label="${label}">
+        <input
+          id="duel${name}Input"
+          type="text"
+          value="${esc(inputValue)}"
+          placeholder="请输入即刻主页链接..."
+          spellcheck="false"
+        />
+        <div class="seeker-loading" role="status" aria-live="polite">
+          <span class="seeker-loading__bar" aria-hidden="true"></span>
+          <span class="catch-ball" aria-hidden="true"></span>
+          <span class="seeker-loading__text">精灵球正在捕捉中</span>
+        </div>
+      </form>
+    </div>
   `;
+}
+
+// 单侧挂载：渲染真卡或问号卡，并绑定倾斜/表单/挑战/更换事件
+function mountDuelSide(side, card) {
+  const name = side === 'left' ? 'Left' : 'Right';
+  const cardHost = $(`duel${name}Card`);
+  if (!cardHost) return;
+  if (card) renderCardElement(cardHost, card, { reveal: true });
+  else renderMysteryCardInto(cardHost, '在下方粘贴即刻主页链接，点击「挑战」召唤这只即可梦。');
+  attachTilt($(`duel${name}Tilt`), cardHost);
+  $(`duel${name}Form`)?.addEventListener('submit', handleDuelSideSubmit);
+  $(`duel${name}ChallengeBtn`)?.addEventListener('click', () => $(`duel${name}Form`)?.requestSubmit());
+  $(`duel${name}SwapBtn`)?.addEventListener('click', () => resetDuelSide(side));
+}
+
+// 「更换即可梦」：该侧重置为问号空位（原链接留在输入框里方便改），对决面板回到待命态
+function resetDuelSide(side) {
+  if (duelLoading) return;
+  duelLoadSeq++;
+  clearDuelRevealTimers();
+  duelSides[side] = null;
+  renderDuelLayout({ syncUrl: true });
+  const name = side === 'left' ? 'Left' : 'Right';
+  const inputEl = $(`duel${name}Input`);
+  inputEl?.focus();
+  inputEl?.select();
+}
+
+// 设置态布局：已就位的一侧显示真卡，空位显示问号卡 + 「挑战」，中间是待命面板
+function renderDuelPending() {
+  clearDuelRevealTimers();
+  captureDuelDrafts();
+  currentDuel = null;
+  const left = duelSides.left ? buildCard(duelSides.left) : null;
+  const right = duelSides.right ? buildCard(duelSides.right) : null;
+  const hint =
+    !left && !right
+      ? '两侧各粘贴一位即友的即刻主页链接，点击「挑战」开始对决。'
+      : `在${left ? '右' : '左'}侧粘贴对手的即刻主页链接，点击「挑战」开始对决。`;
+  document.title = '即可梦决斗 · Jikémon DUEL';
+  arena.className = 'arena duel-arena';
+  arena.innerHTML = `
+    <section class="duel-shell">
+      ${duelSideMarkup('left', left)}
+      <section class="duel-board duel-board--pending" aria-label="即可梦决斗设置">
+        <p class="duel-kicker">Final Result</p>
+        <div class="duel-score"><span>?</span><b>V.S.</b><span>?</span></div>
+        <h2 id="duelWinnerTitle">等待挑战者</h2>
+        <p class="duel-verdict" id="duelVerdict">${hint}</p>
+      </section>
+      ${duelSideMarkup('right', right)}
+    </section>
+  `;
+  mountDuelSide('left', left);
+  mountDuelSide('right', right);
 }
 
 function renderDuel(duel) {
   clearDuelRevealTimers();
+  captureDuelDrafts();
   const winnerClass = duel.winner ? `duel-board--${duel.winner}` : 'duel-board--draw';
   arena.className = 'arena duel-arena';
   arena.innerHTML = `
     <section class="duel-shell">
-      <div class="duel-card-side duel-card-side--left">
-        <div class="duel-card-meta">
-          <strong>${esc(duel.left.name)}</strong>
-          <span>${duel.left.type.icon} ${duel.left.type.name}系 · ${duel.left.rarity.key}</span>
-        </div>
-        <div class="card-tilt duel-tilt" id="duelLeftTilt">
-          <article class="card duel-card" id="duelLeftCard"></article>
-        </div>
-        ${duelSeekerMarkup('left', duel.left)}
-      </div>
+      ${duelSideMarkup('left', duel.left)}
 
       <section class="duel-board ${winnerClass}" aria-label="即可梦决斗结果">
         <p class="duel-kicker">Final Result</p>
@@ -641,48 +798,13 @@ function renderDuel(duel) {
         </dl>
       </section>
 
-      <div class="duel-card-side duel-card-side--right">
-        <div class="duel-card-meta">
-          <strong>${esc(duel.right.name)}</strong>
-          <span>${duel.right.type.icon} ${duel.right.type.name}系 · ${duel.right.rarity.key}</span>
-        </div>
-        <div class="card-tilt duel-tilt" id="duelRightTilt">
-          <article class="card duel-card" id="duelRightCard"></article>
-        </div>
-        ${duelSeekerMarkup('right', duel.right)}
-      </div>
+      ${duelSideMarkup('right', duel.right)}
     </section>
   `;
 
-  const leftCard = $('duelLeftCard');
-  const rightCard = $('duelRightCard');
-  renderCardElement(leftCard, duel.left, { reveal: true });
-  renderCardElement(rightCard, duel.right, { reveal: true });
-  attachTilt($('duelLeftTilt'), leftCard);
-  attachTilt($('duelRightTilt'), rightCard);
-  bindDuelSearchForms();
+  mountDuelSide('left', duel.left);
+  mountDuelSide('right', duel.right);
   playDuelReveal(duel);
-}
-
-function bindDuelSearchForms() {
-  ['duelLeftForm', 'duelRightForm'].forEach((id) => {
-    const duelForm = $(id);
-    duelForm?.addEventListener('submit', handleDuelSubmit);
-  });
-  ['duelLeftSwapBtn', 'duelRightSwapBtn'].forEach((id) => {
-    const btn = $(id);
-    btn?.addEventListener('click', () => {
-      const side = btn.dataset.duelSide;
-      const name = side === 'left' ? 'Left' : 'Right';
-      const formEl = $(`duel${name}Form`);
-      const inputEl = $(`duel${name}Input`);
-      if (!formEl) return;
-      btn.style.display = 'none';
-      formEl.classList.remove('is-hidden');
-      inputEl?.select();
-      inputEl?.focus();
-    });
-  });
 }
 
 function setDuelInputsDisabled(disabled) {
@@ -696,39 +818,49 @@ function setDuelFeedback(message) {
   if (verdictEl) verdictEl.textContent = message;
 }
 
-async function handleDuelSubmit(e) {
+// 单侧「挑战」/输入框回车：只捕捉该侧；若另一侧已就位则直接进入对决
+async function handleDuelSideSubmit(e) {
   e.preventDefault();
   if (duelLoading) return;
 
-  const leftInput = $('duelLeftInput');
-  const rightInput = $('duelRightInput');
-  const leftRaw = leftInput?.value.trim();
-  const rightRaw = rightInput?.value.trim();
-
-  if (!leftRaw || !rightRaw) {
-    setDuelFeedback('请分别输入两位即友的主页链接。');
-    (leftRaw ? rightInput : leftInput)?.focus();
+  const formEl = e.currentTarget;
+  const side = formEl.dataset.duelSide;
+  const inputEl = formEl.querySelector('input');
+  const raw = inputEl?.value.trim();
+  if (!raw) {
+    setDuelFeedback(`先在${side === 'left' ? '左' : '右'}侧粘贴挑战者的即刻主页链接。`);
+    inputEl?.focus();
     return;
   }
 
   duelLoading = true;
   clearDuelRevealTimers();
   const loadToken = ++duelLoadSeq;
-  const progressState = startInlineCatchProgress(e.currentTarget);
+  const progressState = startInlineCatchProgress(formEl);
+  const challengeBtn = arena.querySelector(`.duel-challenge-btn[data-duel-side="${side}"]`);
+  if (challengeBtn) {
+    challengeBtn.disabled = true;
+    challengeBtn.textContent = '捕捉中…';
+  }
   setDuelInputsDisabled(true);
-  setDuelFeedback('正在捕捉新的对战双方。');
+  setDuelFeedback('精灵球正在捕捉挑战者。');
 
   try {
-    const data = await fetchDuelCached(leftRaw, rightRaw);
+    const data = await fetchProfileCached(raw);
     await finishInlineCatchProgress(progressState);
     if (loadToken !== duelLoadSeq) return;
-    renderDuelData(data, leftRaw, rightRaw);
+    duelSides[side] = data;
+    renderDuelLayout({ syncUrl: true });
   } catch (err) {
     if (loadToken === duelLoadSeq) setDuelFeedback('它逃走了：' + err.message);
   } finally {
     stopInlineCatchProgress(progressState);
     duelLoading = false;
     setDuelInputsDisabled(false);
+    if (challengeBtn?.isConnected) {
+      challengeBtn.disabled = false;
+      challengeBtn.textContent = '挑战';
+    }
   }
 }
 
