@@ -187,14 +187,19 @@ export function buildCard({ user, posts }) {
   const picRatio = n ? withPics.length / n : 0;
   const originalRatio = n ? originals.length / n : 0;
 
-  // 发帖频率：最近 n 条帖子横跨的天数
+  // 发帖频率：最近动态中有效时间戳覆盖的天数；不依赖上游数组顺序
   let postsPerDay = 0;
-  if (n >= 2) {
+  const postTimes = posts
+    .map((p) => Date.parse(p?.actionTime))
+    .filter(Number.isFinite);
+  if (postTimes.length >= 2) {
+    const latest = postTimes.reduce((max, time) => Math.max(max, time), -Infinity);
+    const earliest = postTimes.reduce((min, time) => Math.min(min, time), Infinity);
     const spanDays = Math.max(
       0.5,
-      (new Date(posts[0].actionTime) - new Date(posts[n - 1].actionTime)) / 86400000
+      (latest - earliest) / 86400000
     );
-    postsPerDay = n / spanDays;
+    postsPerDay = postTimes.length / spanDays;
   }
 
   // ---- 圈子聚合：每个圈子的发帖数与互动 ----
@@ -297,8 +302,8 @@ export function buildCard({ user, posts }) {
   const resistance = resistKey ? TYPES[resistKey] : null;
 
   // 手速：发帖越频繁手速越高（日更狂魔 ★★★，潜水党 ★）。
-  // postsPerDay 是按账龄摊平的终身平均，老用户会被稀释，阈值不宜过高。
-  const handSpeed = postsPerDay >= 3 ? 3 : postsPerDay >= 1 ? 2 : 1;
+  // postsPerDay 是最近动态覆盖窗口内的平均频率，阈值与文案统一为 1 / 3 条每天。
+  const handSpeed = activityTier(postsPerDay);
 
   // ---- 突出特质：由最强维度决定（超进化直接封「魅力」），写进图鉴 ----
   const traitPool = [
@@ -314,7 +319,7 @@ export function buildCard({ user, posts }) {
 
   // ---- 图鉴风味文本 ----
   const flavor = buildFlavor({
-    createdAt, type, postsPerDay, picRatio, followers, respected, years, weaknessTopic, resistance, trait,
+    createdAt, type, postsPerDay, handSpeed, picRatio, followers, respected, years, weaknessTopic, resistance, trait,
   });
 
   return {
@@ -389,8 +394,8 @@ export function buildDuel(left, right) {
   );
   const winner = score.left === score.right ? null : score.left > score.right ? 'left' : 'right';
   const winnerCard = winner ? (winner === 'left' ? left : right) : null;
-  const closeRows = rows.filter((r) => r.winner !== 'draw').sort((a, b) => b.delta - a.delta);
-  const decisive = closeRows[0] || rows[0];
+  const winnerRows = winner ? rows.filter((r) => r.winner === winner) : [];
+  const decisive = winnerRows.sort((a, b) => b.delta - a.delta)[0] || rows[0];
 
   return {
     left,
@@ -499,17 +504,21 @@ function buildBehaviorMove({ picRatio, originalRatio, avgLikes, postsPerDay, typ
   return { ...base, name: '转发风暴', text: '一键转发引发的信息涟漪，波及在场所有关注者。' };
 }
 
-function buildFlavor({ createdAt, type, postsPerDay, picRatio, followers, respected, years, weaknessTopic, resistance, trait }) {
+function buildFlavor({ createdAt, type, postsPerDay, handSpeed, picRatio, followers, respected, years, weaknessTopic, resistance, trait }) {
   const freq =
-    postsPerDay >= 1.5 ? `以日均 ${postsPerDay.toFixed(1)} 条动态的惊人频率活动` :
-    postsPerDay >= 0.3 ? '保持着规律的发帖节奏' :
-                         '习惯安静地潜伏观察';
+    handSpeed === 3 ? `以日均 ${postsPerDay.toFixed(1)} 条动态的惊人频率活动` :
+    handSpeed === 2 ? '保持着规律的发帖节奏' :
+                      '习惯安静地潜伏观察';
   // 弱点=本命圈子、抵抗力=免疫系别，写进图鉴，凸显即友身份
   const soft = weaknessTopic
     ? `面对本命圈子「${weaknessTopic}」毫无抵抗力${resistance ? `，却对${resistance.name}系内容自动免疫` : ''}。`
     : '';
   const praise = respected > 0 ? `曾被夸夸 ${respected} 次，攻击力因此强化。` : '';
   return `自 ${createdAt.getFullYear()} 年起栖息于即刻森林的${type.name}系即可梦。${freq}。${soft}${praise}其${trait || '魅力'}已吸引 ${fmt(followers)} 个即可梦慕名连接。`;
+}
+
+function activityTier(postsPerDay) {
+  return postsPerDay >= 3 ? 3 : postsPerDay >= 1 ? 2 : 1;
 }
 
 function fmt(v) {

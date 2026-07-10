@@ -1,4 +1,5 @@
 import { buildCard, buildDuel } from './card.js';
+import { createExportSnapshot, exportIsCurrent } from './export-session.js';
 
 const $ = (id) => document.getElementById(id);
 const form = $('form');
@@ -24,10 +25,45 @@ let catchProgressFrame = 0;
 let duelRevealTimers = [];
 let duelLoadSeq = 0;
 let duelLoading = false;
+let exportGeneration = 0;
+let exportBusy = false;
+let exportControlStates = null;
 const duelSides = { left: null, right: null }; // 对战双方的原始接口数据，空位为 null
 const duelSideDraft = { left: '', right: '' }; // 空位输入框草稿，重渲染时保留用户已输入的链接
 const profileCache = new Map();
 const duelPairCache = new Map();
+
+function invalidateExport() {
+  exportGeneration += 1;
+}
+
+function setExportControlsDisabled(disabled) {
+  if (disabled) {
+    if (exportControlStates) return;
+    const controls = [
+      input,
+      openBtn,
+      duelEntryBtn,
+      $('download'),
+      $('exportMenuBtn'),
+      ...document.querySelectorAll('.duel-seeker input, .duel-challenge-btn, .duel-swap-btn'),
+    ].filter(Boolean);
+    exportControlStates = [...new Set(controls)].map((el) => ({ el, disabled: el.disabled }));
+    exportControlStates.forEach(({ el }) => {
+      el.disabled = true;
+    });
+    return;
+  }
+  if (!exportControlStates) return;
+  exportControlStates.forEach(({ el, disabled }) => {
+    if (el.isConnected) el.disabled = disabled;
+  });
+  exportControlStates = null;
+}
+
+function assertExportCurrent(token) {
+  if (!exportIsCurrent(token, exportGeneration)) throw new Error('导出已取消');
+}
 
 // 从输入中提取用户 ID：支持 /u/ /user/ /users/ 路径或裸 ID（仅用作地址栏回退，权威 ID 用响应里的 username）
 function extractId(raw) {
@@ -133,6 +169,7 @@ openBtn.addEventListener('click', () => form.requestSubmit());
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
+  if (exportBusy) return;
   const id = input.value.trim();
   if (!id) {
     setStatus('先在上方粘贴你的即刻主页链接～');
@@ -179,7 +216,7 @@ function updateHomeActions() {
 
 // 首页「即可梦对战」入口：带着当前卡牌（若有）进入对战页左侧，右侧留空等待挑战者
 duelEntryBtn?.addEventListener('click', () => {
-  if (currentMode === 'duel') return;
+  if (exportBusy || currentMode === 'duel') return;
   duelSides.left = currentProfileData || null;
   duelSides.right = null;
   duelSideDraft.left = '';
@@ -551,6 +588,7 @@ function renderDossier(c) {
 }
 
 function render(c) {
+  invalidateExport();
   currentMode = 'card';
   currentCardNo = c.cardNo;
   currentCard = c;
@@ -567,6 +605,7 @@ function render(c) {
 
 // 切换到对战页的页面骨架：标题、隐藏首页表单/动作条/档案
 function setupDuelChrome() {
+  invalidateExport();
   currentMode = 'duel';
   currentCard = null;
   currentCardNo = '';
@@ -1183,8 +1222,8 @@ attachTilt(tilt, cardEl);
  * 能完整保留 mix-blend-mode 镭射层与渐变卡框（html2canvas 不支持会发灰）。
  * 字体不用它自带的嵌入逻辑（会拉取 Noto Sans SC 的 200+ 个子集文件直至挂起），
  * 而是用 Google Fonts 的 text= 参数按卡面实际字符请求迷你子集，自行内联。 */
-async function buildFontEmbedCSS(extraText = '') {
-  const chars = [...new Set(cardEl.textContent + extraText + 'HP0123456789×-★ ')].join('');
+async function buildFontEmbedCSS(cardRoot, extraText = '') {
+  const chars = [...new Set(cardRoot.textContent + extraText + 'HP0123456789×-★ ')].join('');
   const text = encodeURIComponent(chars);
   const families = [
     'ZCOOL+QingKe+HuangYou',
@@ -1235,8 +1274,8 @@ async function imageAssetFromElement(el, { timeoutMs = 5000, label = '图片', r
   }
 }
 
-async function collectExportArtAssets() {
-  const artEl = cardEl.querySelector('.card-art');
+async function collectExportArtAssets(cardRoot) {
+  const artEl = cardRoot.querySelector('.card-art');
   if (!artEl) return {};
   const rippleEl = artEl.querySelector('.art-ripple');
   const avatarEl = artEl.querySelector('.avatar');
@@ -1256,8 +1295,8 @@ function imageSize(img) {
   };
 }
 
-function rectInExport(el, cardX, cardY) {
-  const cardRect = cardEl.getBoundingClientRect();
+function rectInExport(el, cardX, cardY, sourceCardEl) {
+  const cardRect = sourceCardEl.getBoundingClientRect();
   if (!cardRect.width) return null;
   const r = el.getBoundingClientRect();
   const k = 366 / cardRect.width;
@@ -1273,8 +1312,8 @@ function cssColor(style, name, fallback) {
   return style.getPropertyValue(name).trim() || fallback;
 }
 
-function drawCardUnderlay(ctx, cardX, cardY, cw, ch) {
-  const cardStyle = getComputedStyle(cardEl);
+function drawCardUnderlay(ctx, cardX, cardY, cw, ch, sourceCardEl) {
+  const cardStyle = getComputedStyle(sourceCardEl);
   const frame = cssColor(cardStyle, '--frame', '#7fa8d9');
   const frameDeep = cssColor(cardStyle, '--frame-deep', '#40679e');
 
@@ -1300,8 +1339,8 @@ function drawCardUnderlay(ctx, cardX, cardY, cw, ch) {
   ctx.stroke();
   ctx.restore();
 
-  const innerEl = cardEl.querySelector('.card-inner');
-  const inner = innerEl && rectInExport(innerEl, cardX, cardY);
+  const innerEl = sourceCardEl.querySelector('.card-inner');
+  const inner = innerEl && rectInExport(innerEl, cardX, cardY, sourceCardEl);
   if (!inner) return;
 
   const innerStyle = getComputedStyle(innerEl);
@@ -1318,12 +1357,12 @@ function drawCardUnderlay(ctx, cardX, cardY, cw, ch) {
 
 // 把卡片画面区的波纹与头像直接绘制到导出 canvas，绕开 iOS 丢弃 foreignObject 内 <img> 的问题。
 // 用真实 DOM 的 getBoundingClientRect 定位（导出时卡片 transform:none，实际尺寸=设计尺寸）。
-function drawCardArt(ctx, cardX, cardY, assets = {}) {
-  const artEl = cardEl.querySelector('.card-art');
+function drawCardArt(ctx, cardX, cardY, assets = {}, sourceCardEl) {
+  const artEl = sourceCardEl.querySelector('.card-art');
   if (!artEl) return;
-  const cardRect = cardEl.getBoundingClientRect();
+  const cardRect = sourceCardEl.getBoundingClientRect();
   const k = cardRect.width ? 366 / cardRect.width : 1; // 逻辑像素 / 实际像素（k≈1）
-  const a = rectInExport(artEl, cardX, cardY);
+  const a = rectInExport(artEl, cardX, cardY, sourceCardEl);
   if (!a) return;
   const artStyle = getComputedStyle(artEl);
   const border = {
@@ -1355,7 +1394,7 @@ function drawCardArt(ctx, cardX, cardY, assets = {}) {
   const avatar = assets.avatar || avatarEl;
   const avatarNatural = imageSize(avatar);
   if (avatarEl && avatarNatural.w) {
-    const v = rectInExport(avatarEl, cardX, cardY);
+    const v = rectInExport(avatarEl, cardX, cardY, sourceCardEl);
     if (!v) return;
     const cx0 = v.x + v.w / 2;
     const cy0 = v.y + v.h / 2;
@@ -1386,7 +1425,7 @@ function drawCardArt(ctx, cardX, cardY, assets = {}) {
   ctx.textBaseline = 'middle';
   ctx.font = '700 9px "Noto Sans SC", sans-serif';
   badges.forEach((b) => {
-    const r = rectInExport(b, cardX, cardY);
+    const r = rectInExport(b, cardX, cardY, sourceCardEl);
     if (!r) return;
     roundRectPath(ctx, r.x, r.y, r.w, r.h, Math.min(r.h, r.w) / 2);
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
@@ -1416,7 +1455,7 @@ function roundRectPath(ctx, x, y, w, h, r) {
 // 把卡片矢量图合成到竖版分享图上。
 // variant = 'full'：图鉴海报（深色背景 + 背光 + 顶部标题 + 卡牌与右侧档案 + 底部特质/网址）
 // variant = 'plain'：纯卡牌（小边距，仅卡牌本体 + 下方金色 JIKÉMON）
-async function composeExport(cardImg, artAssets = {}, variant = 'full', dossierImg = null) {
+async function composeExport(cardImg, artAssets = {}, variant = 'full', dossierImg = null, snapshot) {
   const S = 3; // 输出倍率
   const CW = 366, CH = 512; // 卡片逻辑尺寸
   const full = variant === 'full';
@@ -1482,7 +1521,7 @@ async function composeExport(cardImg, artAssets = {}, variant = 'full', dossierI
   ctx.fill();
   ctx.restore();
 
-  drawCardUnderlay(ctx, cardX, cardY, CW, CH);
+  drawCardUnderlay(ctx, cardX, cardY, CW, CH, snapshot.cardRoot);
 
   ctx.save();
   roundRectPath(ctx, cardX, cardY, CW, CH, 16);
@@ -1492,7 +1531,7 @@ async function composeExport(cardImg, artAssets = {}, variant = 'full', dossierI
 
   // iOS WebKit 会丢弃 foreignObject 内的 <img>（波纹+头像），SVG 里画面区是空的；
   // 按真实 DOM 布局把波纹与头像直接画到 canvas，跨平台一致（桌面是对齐叠加，结果不变）。
-  drawCardArt(ctx, cardX, cardY, artAssets);
+  drawCardArt(ctx, cardX, cardY, artAssets, snapshot.cardRoot);
 
   // 档案面板：卡牌右侧，顶部与卡牌对齐；先铺桌面色圆角底（带投影），半透明面板叠上观感与网页一致
   if (hasDossier) {
@@ -1550,7 +1589,7 @@ async function composeExport(cardImg, artAssets = {}, variant = 'full', dossierI
   ctx.font = '900 22px "Noto Sans SC", sans-serif';
   setLS('2px');
   ctx.fillStyle = '#c2cedd';
-  ctx.fillText(`${currentCard.type.name}系 · ${currentCard.trait}`, cx, footY + 32);
+  ctx.fillText(`${snapshot.card.type.name}系 · ${snapshot.card.trait}`, cx, footY + 32);
 
   ctx.font = '12px "M PLUS Rounded 1c", "Noto Sans SC", sans-serif';
   setLS('0px');
@@ -1563,38 +1602,75 @@ async function composeExport(cardImg, artAssets = {}, variant = 'full', dossierI
 
 // 合成当前卡片的分享图 PNG blob（导出 / 复制图片共用）
 async function composeCardPngBlob(variant = 'plain') {
-  const prevTransform = cardEl.style.transform;
-  cardEl.style.transform = 'none';
-  cardEl.classList.add('is-exporting');
-  try {
-    await waitForPaint();
-    const artAssets = await collectExportArtAssets();
+  if (exportBusy) throw new Error('已有导出任务进行中');
+  if (!currentCard) throw new Error('当前没有可导出的卡片');
 
-    const withDossier = variant === 'full' && !dossier.hidden;
-    const fontEmbedCSS = await buildFontEmbedCSS(withDossier ? dossier.textContent : '');
+  const token = ++exportGeneration;
+  exportBusy = true;
+  setExportControlsDisabled(true);
+
+  const withDossier = variant === 'full' && !dossier.hidden;
+  const cardRoot = cardEl.cloneNode(true);
+  cardRoot.classList.add('is-exporting');
+  cardRoot.style.transform = 'none';
+  const dossierRoot = withDossier ? dossier.cloneNode(true) : null;
+  const host = document.createElement('div');
+  host.style.position = 'fixed';
+  host.style.left = '-100000px';
+  host.style.top = '0';
+  host.style.width = '366px';
+  host.style.pointerEvents = 'none';
+  host.append(cardRoot);
+  if (dossierRoot) host.append(dossierRoot);
+  document.body.append(host);
+
+  const snapshot = createExportSnapshot({
+    card: currentCard,
+    cardNo: currentCardNo,
+    variant,
+    cardRoot,
+    dossierRoot,
+  });
+
+  try {
+    assertExportCurrent(token);
+    await waitForPaint();
+    assertExportCurrent(token);
+    const artAssets = await collectExportArtAssets(snapshot.cardRoot);
+    assertExportCurrent(token);
+
+    const fontEmbedCSS = await buildFontEmbedCSS(
+      snapshot.cardRoot,
+      snapshot.dossierRoot?.textContent || ''
+    );
+    assertExportCurrent(token);
     // 只用 toSvg 拿矢量快照，光栅化自己做（库内置的 toPng 在部分环境下会挂起）。
     // 头像已预解码，单次调用即可；cacheBust 强制重新拉取，避免切换用户后复用上个用户的缓存图。
-    const svgUrl = await htmlToImage.toSvg(cardEl, { fontEmbedCSS, cacheBust: true });
+    const svgUrl = await htmlToImage.toSvg(snapshot.cardRoot, { fontEmbedCSS, cacheBust: true });
 
     // SVG decode() 在后台/隐藏页可能不会恢复；onload 对隐藏页更可靠。
     const img = await loadImage(svgUrl, { timeoutMs: 8000, label: 'SVG' });
+    assertExportCurrent(token);
 
     // 图鉴版：档案面板一起快照，画在卡牌右侧（纯文字，无 foreignObject 图片兼容问题）
     let dossierImg = null;
     if (withDossier) {
-      const dossierSvg = await htmlToImage.toSvg(dossier, { fontEmbedCSS, cacheBust: true });
+      const dossierSvg = await htmlToImage.toSvg(snapshot.dossierRoot, { fontEmbedCSS, cacheBust: true });
       dossierImg = await loadImage(dossierSvg, { timeoutMs: 8000, label: '档案' });
+      assertExportCurrent(token);
     }
 
     // 再等一小会，给 iOS 光栅化 foreignObject 内嵌图片的时间
     // （用 setTimeout 而非 rAF：后台/隐藏标签页 rAF 会被暂停导致卡死）
     await wait(120);
+    assertExportCurrent(token);
 
-    const composed = await composeExport(img, artAssets, variant, dossierImg);
+    const composed = await composeExport(img, artAssets, variant, dossierImg, snapshot);
     return await canvasToPngBlob(composed);
   } finally {
-    cardEl.classList.remove('is-exporting');
-    cardEl.style.transform = prevTransform;
+    host.remove();
+    exportBusy = false;
+    setExportControlsDisabled(false);
   }
 }
 

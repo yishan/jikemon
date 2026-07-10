@@ -15,6 +15,9 @@ const HOST = process.env.HOST || undefined;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const OG_W = 1200;
 const OG_H = 630;
+const UPSTREAM_TIMEOUT_MS = 10_000;
+const PROFILE_MAX_BYTES = 4 * 1024 * 1024;
+const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -70,30 +73,63 @@ function isOkjikeImageHost(h) {
 
 // 跟随重定向抓取。okjk.co 短链会 302 到 http:// 的 m.okjike.com，故按协议选择 http/https。
 // hostGuard 若提供，则校验初始及每一跳的目标域名，防止被重定向到站外。
-function fetchUrl(url, headers = {}, redirects = 3, hostGuard = null) {
+function fetchUrl(url, headers = {}, redirects = 3, hostGuard = null, options = {}) {
+  const timeoutMs = options.timeoutMs ?? UPSTREAM_TIMEOUT_MS;
+  const maxBytes = options.maxBytes ?? PROFILE_MAX_BYTES;
   return new Promise((resolve, reject) => {
+    let settled = false;
+    const fail = (err) => {
+      if (settled) return;
+      settled = true;
+      reject(err);
+    };
+    const succeed = (value) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
     let u;
     try {
       u = new URL(url);
     } catch {
-      return reject(new Error('URL 无效'));
+      return fail(new Error('URL 无效'));
     }
-    if (hostGuard && !hostGuard(u.hostname)) return reject(new Error('不允许的域名: ' + u.hostname));
+    if (!['http:', 'https:'].includes(u.protocol)) return fail(new Error('仅支持 HTTP(S) 上游地址'));
+    if (hostGuard && !hostGuard(u.hostname)) return fail(new Error('不允许的域名: ' + u.hostname));
     const mod = u.protocol === 'http:' ? http : https;
-    mod
-      .get(u, { headers: { 'User-Agent': MOBILE_UA, ...headers } }, (res) => {
-        if (res.statusCode >= 301 && res.statusCode <= 308 && res.headers.location && redirects > 0) {
-          res.resume();
-          const next = new URL(res.headers.location, u).href;
-          return resolve(fetchUrl(next, headers, redirects - 1, hostGuard));
+    const request = mod.get(u, { headers: { 'User-Agent': MOBILE_UA, ...headers } }, (res) => {
+      if (res.statusCode >= 301 && res.statusCode <= 308 && res.headers.location && redirects > 0) {
+        res.resume();
+        let next;
+        try {
+          next = new URL(res.headers.location, u).href;
+        } catch {
+          return fail(new Error('上游重定向地址无效'));
         }
-        const chunks = [];
-        res.on('data', (c) => chunks.push(c));
-        res.on('end', () =>
-          resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks) })
-        );
-      })
-      .on('error', reject);
+        return fetchUrl(next, headers, redirects - 1, hostGuard, options).then(succeed, fail);
+      }
+      const contentLength = Number(res.headers['content-length']);
+      if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+        res.resume();
+        return fail(new Error('上游响应过大'));
+      }
+      const chunks = [];
+      let totalBytes = 0;
+      res.on('data', (c) => {
+        totalBytes += c.length;
+        if (totalBytes > maxBytes) {
+          fail(new Error('上游响应过大'));
+          res.destroy();
+          return;
+        }
+        chunks.push(c);
+      });
+      res.on('aborted', () => fail(new Error('上游响应中断')));
+      res.on('error', fail);
+      res.on('end', () => succeed({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks) }));
+    })
+      .setTimeout(timeoutMs, () => request.destroy(new Error('上游请求超时')))
+      .on('error', fail);
   });
 }
 
@@ -122,7 +158,7 @@ async function getProfileData(raw) {
   const resolved = resolveProfileUrl(raw);
   if (resolved.error) throw new Error(resolved.error);
 
-  const page = await fetchUrl(resolved.url, {}, 4, isOkjikeHost);
+  const page = await fetchUrl(resolved.url, {}, 4, isOkjikeHost, { maxBytes: PROFILE_MAX_BYTES });
   const html = page.body.toString('utf-8');
   const match = html.match(/<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/s);
   if (!match) throw new Error('未能在页面中找到用户数据，可能是用户不存在');
@@ -173,7 +209,13 @@ async function handleImage(query, res) {
     return sendJson(res, 403, { error: '仅允许即刻 CDN 域名' });
   }
   try {
-    const img = await fetchUrl(target.href, { Referer: 'https://m.okjike.com/' });
+    const img = await fetchUrl(
+      target.href,
+      { Referer: 'https://m.okjike.com/' },
+      3,
+      isOkjikeImageHost,
+      { maxBytes: IMAGE_MAX_BYTES }
+    );
     res.writeHead(img.status === 200 ? 200 : 502, {
       'Content-Type': img.headers['content-type'] || 'image/jpeg',
       'Access-Control-Allow-Origin': '*',
@@ -292,8 +334,7 @@ async function handleRequest(req, res) {
   serveStatic(url.pathname, res, req.method);
 }
 
-http
-  .createServer((req, res) => {
+const server = http.createServer((req, res) => {
     handleRequest(req, res).catch((err) => {
       console.error(err);
       if (!res.headersSent) {
@@ -301,5 +342,10 @@ http
       }
       res.end('Server Error');
     });
-  })
-  .listen(PORT, HOST, () => console.log(`即刻宝可梦卡片生成器 → http://${HOST || 'localhost'}:${PORT}`));
+  });
+
+if (require.main === module) {
+  server.listen(PORT, HOST, () => console.log(`即刻宝可梦卡片生成器 → http://${HOST || 'localhost'}:${PORT}`));
+}
+
+module.exports = { fetchUrl };
