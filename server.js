@@ -241,9 +241,9 @@ function buildMetaTags(req) {
   const imageUrl = new URL('/og.png', base).href;
   const pathname = new URL(req.url, base).pathname;
   const isDuel = /^\/vs\/?$/.test(pathname) || /^\/u\/[\w-]+\/vs(\/[\w-]+)?\/?$/.test(pathname);
-  const title = isDuel ? '即可梦决斗 · Jikémon DUEL' : '即可梦图鉴 · Jikémon';
+  const title = isDuel ? '宝可即决斗 · Pokéji DUEL' : '宝可即图鉴 · Pokéji';
   const description = isDuel
-    ? '两位即友的专属即可梦卡牌决斗。'
+    ? '两位即友的专属宝可即卡牌决斗。'
     : '把你的即刻主页变成一张宝可梦风格的收藏卡牌。';
   return [
     `<link rel="canonical" href="${attr(pageUrl)}" />`,

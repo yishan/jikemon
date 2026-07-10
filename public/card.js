@@ -344,7 +344,7 @@ export function buildCard({ user, posts }) {
     respected,
     respectBonus,
     cardNo: `No.${String(createdAt.getMonth() + 1).padStart(2, '0')}${String(createdAt.getDate()).padStart(2, '0')}`,
-    infoLine: `即可梦连接 ｜ 关注 ${fmt(following)}　　被关注 ${fmt(followers)}　　获赞 ${fmt(liked)}`,
+    infoLine: `宝可即连接 ｜ 关注 ${fmt(following)}　　被关注 ${fmt(followers)}　　获赞 ${fmt(liked)}`,
     isVerified: !!user.isVerified,
     isSponsor: !!user.isSponsor,
     metrics: { followers, liked, years: years.toFixed(1), postsPerDay: postsPerDay.toFixed(1), picRatio, avgLikes: avgLikes.toFixed(1), evoScore: Math.round(evoScore * 100) },
@@ -514,7 +514,7 @@ function buildFlavor({ createdAt, type, postsPerDay, handSpeed, picRatio, follow
     ? `面对本命圈子「${weaknessTopic}」毫无抵抗力${resistance ? `，却对${resistance.name}系内容自动免疫` : ''}。`
     : '';
   const praise = respected > 0 ? `曾被夸夸 ${respected} 次，攻击力因此强化。` : '';
-  return `自 ${createdAt.getFullYear()} 年起栖息于即刻森林的${type.name}系即可梦。${freq}。${soft}${praise}其${trait || '魅力'}已吸引 ${fmt(followers)} 个即可梦慕名连接。`;
+  return `自 ${createdAt.getFullYear()} 年起栖息于即刻森林的${type.name}系宝可即。${freq}。${soft}${praise}其${trait || '魅力'}已吸引 ${fmt(followers)} 个宝可即慕名连接。`;
 }
 
 function activityTier(postsPerDay) {

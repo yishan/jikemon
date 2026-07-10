@@ -214,7 +214,7 @@ function updateHomeActions() {
   if (exportGroup) exportGroup.hidden = !currentCard;
 }
 
-// 首页「即可梦对战」入口：带着当前卡牌（若有）进入对战页左侧，右侧留空等待挑战者
+// 首页「宝可即对战」入口：带着当前卡牌（若有）进入对战页左侧，右侧留空等待挑战者
 duelEntryBtn?.addEventListener('click', () => {
   if (exportBusy || currentMode === 'duel') return;
   duelSides.left = currentProfileData || null;
@@ -383,7 +383,7 @@ function renderMysteryCardInto(el, hint) {
         <span class="type-orb" style="--type-color:#b7b1a1">?</span>
       </div>
       <div class="card-art"><div class="mystery-q">?</div></div>
-      <div class="card-info">即可梦连接 ｜ 关注 ??　　被关注 ??　　获赞 ??</div>
+      <div class="card-info">宝可即连接 ｜ 关注 ??　　被关注 ??　　获赞 ??</div>
       <div class="moves">
         ${[0, 1]
           .map(
@@ -404,14 +404,14 @@ function renderMysteryCardInto(el, hint) {
         <div class="cb-cell"><b>网感</b><span class="cb-val">?</span></div>
       </div>
       <p class="card-flavor mystery-hint">${hint}</p>
-      <div class="card-foot"><span>No.????</span><span>illus. JIKÉMON</span><span class="rarity-mark">?</span></div>
+      <div class="card-foot"><span>No.????</span><span>illus. POKÉJI</span><span class="rarity-mark">?</span></div>
     </div>
   `;
 }
 
 // 抓取前的首页神秘占位卡：中央浮着抓取按钮，吸引用户开卡
 function renderPlaceholder() {
-  renderMysteryCardInto(cardEl, '在上方粘贴你的即刻主页链接，点击中央「捕捉」，开启属于你的专属即可梦。');
+  renderMysteryCardInto(cardEl, '在上方粘贴你的即刻主页链接，点击中央「捕捉」，开启属于你的专属宝可即。');
 }
 
 // 把十六进制色与白色按比例混合，返回具体 rgb()。
@@ -514,7 +514,7 @@ function cardMarkup(c) {
       <p class="card-flavor">${esc(c.flavor)}</p>
       <div class="card-foot">
         <span>${esc(c.cardNo)}</span>
-        <span>illus. JIKÉMON</span>
+        <span>illus. POKÉJI</span>
         <span class="rarity-mark">${c.rarity.key} · ${c.rarity.label}</span>
       </div>
     </div>
@@ -561,7 +561,7 @@ function renderDossier(c) {
     })
     .join('<br/>');
   dossier.innerHTML = `
-    <h2>即可梦档案<span class="dossier-en">INFO</span></h2>
+    <h2>宝可即档案<span class="dossier-en">INFO</span></h2>
     <dl>
       <dt>名称</dt><dd><b>${esc(c.name)}</b>${
         c.username && !/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(c.username) ? `（@${esc(c.username)}）` : ''
@@ -612,9 +612,9 @@ function setupDuelChrome() {
   document.body.classList.add('is-duel-page');
   const titleEl = document.querySelector('.masthead h1');
   const subEl = document.querySelector('.masthead .sub');
-  if (titleEl) titleEl.textContent = '即可梦决斗';
-  if (subEl) subEl.textContent = 'JIKÉMON DUEL';
-  document.title = '即可梦决斗 · Jikémon DUEL';
+  if (titleEl) titleEl.textContent = '宝可即决斗';
+  if (subEl) subEl.textContent = 'POKÉJI DUEL';
+  document.title = '宝可即决斗 · Pokéji DUEL';
   form.hidden = true;
   actions.hidden = true;
   dossier.hidden = true;
@@ -664,7 +664,7 @@ async function loadDuelRoute(leftId, rightId) {
   arena.innerHTML = `
     <section class="duel-loading" role="status" aria-live="polite">
       <span class="catch-ball" aria-hidden="true"></span>
-      <strong>正在捕捉双方即可梦</strong>
+      <strong>正在捕捉双方宝可即</strong>
     </section>
   `;
 
@@ -696,7 +696,7 @@ function renderDuelData(data, leftFallback, rightFallback) {
   const canonicalLeft = data.left?.user?.username || left.username || extractId(leftFallback);
   const canonicalRight = data.right?.user?.username || right.username || extractId(rightFallback);
   history.replaceState(null, '', `/u/${canonicalLeft}/vs/${canonicalRight}`);
-  document.title = `${left.name} vs ${right.name} · 即可梦决斗`;
+  document.title = `${left.name} vs ${right.name} · 宝可即决斗`;
   renderDuel(duel);
 }
 
@@ -705,10 +705,10 @@ function duelProfileUrl(card) {
 }
 
 // 对战单侧：card 为空时渲染问号空位（卡上浮「挑战」按钮 + 常显链接输入框），
-// 有卡时渲染真卡 + 「更换即可梦」按钮（点击重置回问号空位）+ 隐藏的输入框
+// 有卡时渲染真卡 + 「更换宝可即」按钮（点击重置回问号空位）+ 隐藏的输入框
 function duelSideMarkup(side, card) {
   const name = side === 'left' ? 'Left' : 'Right';
-  const label = side === 'left' ? '左侧即可梦主页链接' : '右侧即可梦主页链接';
+  const label = side === 'left' ? '左侧宝可即主页链接' : '右侧宝可即主页链接';
   const metaHtml = card
     ? `<strong>${esc(card.name)}</strong><span>${card.type.icon} ${card.type.name}系 · ${card.rarity.key}</span>`
     : '<strong>神秘挑战者</strong><span>？？系 · ?</span>';
@@ -717,7 +717,7 @@ function duelSideMarkup(side, card) {
     <div class="duel-card-side duel-card-side--${side}">
       ${
         card
-          ? `<button class="duel-swap-btn" id="duel${name}SwapBtn" data-duel-side="${side}" type="button">↻ 更换即可梦</button>`
+          ? `<button class="duel-swap-btn" id="duel${name}SwapBtn" data-duel-side="${side}" type="button">↻ 更换宝可即</button>`
           : ''
       }
       <form class="seeker duel-seeker${card ? ' is-hidden' : ''}" id="duel${name}Form" data-duel-side="${side}" aria-label="${label}">
@@ -753,14 +753,14 @@ function mountDuelSide(side, card) {
   const cardHost = $(`duel${name}Card`);
   if (!cardHost) return;
   if (card) renderCardElement(cardHost, card, { reveal: true });
-  else renderMysteryCardInto(cardHost, '在下方粘贴即刻主页链接，点击「挑战」召唤这只即可梦。');
+  else renderMysteryCardInto(cardHost, '在下方粘贴即刻主页链接，点击「挑战」召唤这只宝可即。');
   attachTilt($(`duel${name}Tilt`), cardHost);
   $(`duel${name}Form`)?.addEventListener('submit', handleDuelSideSubmit);
   $(`duel${name}ChallengeBtn`)?.addEventListener('click', () => $(`duel${name}Form`)?.requestSubmit());
   $(`duel${name}SwapBtn`)?.addEventListener('click', () => resetDuelSide(side));
 }
 
-// 「更换即可梦」：该侧重置为问号空位（原链接留在输入框里方便改），对决面板回到待命态
+// 「更换宝可即」：该侧重置为问号空位（原链接留在输入框里方便改），对决面板回到待命态
 function resetDuelSide(side) {
   if (duelLoading) return;
   duelLoadSeq++;
@@ -784,12 +784,12 @@ function renderDuelPending() {
     !left && !right
       ? '两侧各粘贴一位即友的即刻主页链接，点击「挑战」开始对决。'
       : `在${left ? '右' : '左'}侧粘贴对手的即刻主页链接，点击「挑战」开始对决。`;
-  document.title = '即可梦决斗 · Jikémon DUEL';
+  document.title = '宝可即决斗 · Pokéji DUEL';
   arena.className = 'arena duel-arena';
   arena.innerHTML = `
     <section class="duel-shell">
       ${duelSideMarkup('left', left)}
-      <section class="duel-board duel-board--pending" aria-label="即可梦决斗设置">
+      <section class="duel-board duel-board--pending" aria-label="宝可即决斗设置">
         <p class="duel-kicker">Final Result</p>
         <div class="duel-score"><span>?</span><b>V.S.</b><span>?</span></div>
         <h2 id="duelWinnerTitle">等待挑战者</h2>
@@ -811,7 +811,7 @@ function renderDuel(duel) {
     <section class="duel-shell">
       ${duelSideMarkup('left', duel.left)}
 
-      <section class="duel-board ${winnerClass}" aria-label="即可梦决斗结果">
+      <section class="duel-board ${winnerClass}" aria-label="宝可即决斗结果">
         <p class="duel-kicker">Final Result</p>
         <div class="duel-score">
           <span id="duelScoreLeft">0</span>
@@ -1101,7 +1101,7 @@ function shouldUseMobileExportPreview() {
 
 function exportFileName() {
   const no = (currentCardNo.match(/\d+/) || [])[0];
-  return no ? `jikemon-card-${no}.png` : 'jikemon-card.png';
+  return no ? `pokeji-card-${no}.png` : 'pokeji-card.png';
 }
 
 function canvasToPngBlob(canvas) {
@@ -1454,7 +1454,7 @@ function roundRectPath(ctx, x, y, w, h, r) {
 
 // 把卡片矢量图合成到竖版分享图上。
 // variant = 'full'：图鉴海报（深色背景 + 背光 + 顶部标题 + 卡牌与右侧档案 + 底部特质/网址）
-// variant = 'plain'：纯卡牌（小边距，仅卡牌本体 + 下方金色 JIKÉMON）
+// variant = 'plain'：纯卡牌（小边距，仅卡牌本体 + 下方金色 POKÉJI）
 async function composeExport(cardImg, artAssets = {}, variant = 'full', dossierImg = null, snapshot) {
   const S = 3; // 输出倍率
   const CW = 366, CH = 512; // 卡片逻辑尺寸
@@ -1555,16 +1555,16 @@ async function composeExport(cardImg, artAssets = {}, variant = 'full', dossierI
   const footY = cardY + CH + GAP_BOT;
 
   if (!full) {
-    // 纯卡牌版：仅在卡下方居中一个金色 JIKÉMON
+    // 纯卡牌版：仅在卡下方居中一个金色 POKÉJI
     ctx.font = '900 15px "M PLUS Rounded 1c", "Noto Sans SC", sans-serif';
     setLS('4px');
     ctx.fillStyle = '#e8c565';
-    ctx.fillText('JIKÉMON', cx, footY + 14);
+    ctx.fillText('POKÉJI', cx, footY + 14);
     setLS('0px');
     return cv;
   }
 
-  // 顶部标题「即可梦图鉴」（金色渐变 + 轻投影）
+  // 顶部标题「宝可即图鉴」（金色渐变 + 轻投影）
   ctx.font = '44px "ZCOOL QingKe HuangYou", sans-serif';
   setLS('6px');
   const tg = ctx.createLinearGradient(0, TOP + 22, 0, TOP + 72);
@@ -1574,7 +1574,7 @@ async function composeExport(cardImg, artAssets = {}, variant = 'full', dossierI
   ctx.shadowColor = 'rgba(0,0,0,0.4)';
   ctx.shadowBlur = 8;
   ctx.shadowOffsetY = 3;
-  ctx.fillText('即可梦图鉴', cx, TOP + 62);
+  ctx.fillText('宝可即图鉴', cx, TOP + 62);
   ctx.shadowColor = 'transparent';
   ctx.shadowBlur = 0;
   ctx.shadowOffsetY = 0;
@@ -1583,7 +1583,7 @@ async function composeExport(cardImg, artAssets = {}, variant = 'full', dossierI
   ctx.font = '14px "Noto Sans SC", sans-serif';
   setLS('3px');
   ctx.fillStyle = '#9db8a7';
-  ctx.fillText('JIKÉMON · 把你的即刻主页变成专属卡牌', cx, TOP + 100);
+  ctx.fillText('POKÉJI · 把你的即刻主页变成专属卡牌', cx, TOP + 100);
 
   // 底部：特质关键词 + 网址
   ctx.font = '900 22px "Noto Sans SC", sans-serif';
@@ -1594,7 +1594,7 @@ async function composeExport(cardImg, artAssets = {}, variant = 'full', dossierI
   ctx.font = '12px "M PLUS Rounded 1c", "Noto Sans SC", sans-serif';
   setLS('0px');
   ctx.fillStyle = '#e8c565';
-  ctx.fillText('web.jikemon.com', cx, footY + 82);
+  ctx.fillText('web.pokeji.com', cx, footY + 82);
 
   setLS('0px');
   return cv;
@@ -1693,7 +1693,7 @@ async function exportCardImage(btn, idleText, variant = 'plain') {
   }
 }
 
-// 导出卡牌：纯卡牌版（小边距 + 金色 JIKÉMON）
+// 导出卡牌：纯卡牌版（小边距 + 金色 POKÉJI）
 $('download').addEventListener('click', () => exportCardImage($('download'), '导出卡牌', 'plain'));
 
 /* ---- 导出下拉菜单：复制卡牌 / 复制链接 / 导出图鉴 ---- */

@@ -79,10 +79,10 @@
   </g>
 
   <g font-family="Noto Sans SC, PingFang SC, Hiragino Sans GB, Microsoft YaHei, Arial, sans-serif">
-    <text x="504" y="132" fill="#f7df86" font-size="66" font-weight="900" filter="url(#titleShadow)">即可梦图鉴</text>
-    <text x="507" y="170" fill="#a9c0b2" font-size="20" letter-spacing="5">JIKÉMON · SOCIAL CARD</text>
+    <text x="504" y="132" fill="#f7df86" font-size="66" font-weight="900" filter="url(#titleShadow)">宝可即图鉴</text>
+    <text x="507" y="170" fill="#a9c0b2" font-size="20" letter-spacing="5">POKÉJI · SOCIAL CARD</text>
     <text x="504" y="245" fill="#fffdf4" font-size="44" font-weight="900">把即刻主页变成专属卡牌</text>
-    <text x="506" y="288" fill="#d8cfae" font-size="24" font-weight="700">粘贴主页链接，捕捉你的即可梦属性、技能与图鉴描述</text>
+    <text x="506" y="288" fill="#d8cfae" font-size="24" font-weight="700">粘贴主页链接，捕捉你的宝可即属性、技能与图鉴描述</text>
 
     <g opacity="0.58">
       <rect x="504" y="344" width="164" height="50" rx="8" fill="#fffdf4" fill-opacity="0.08" stroke="#e8c565" stroke-opacity="0.22"/>
