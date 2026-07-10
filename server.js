@@ -334,7 +334,7 @@ async function handleRequest(req, res) {
   serveStatic(url.pathname, res, req.method);
 }
 
-const server = http.createServer((req, res) => {
+function handler(req, res) {
     handleRequest(req, res).catch((err) => {
       console.error(err);
       if (!res.headersSent) {
@@ -342,10 +342,14 @@ const server = http.createServer((req, res) => {
       }
       res.end('Server Error');
     });
-  });
+}
+
+const server = http.createServer(handler);
 
 if (require.main === module) {
   server.listen(PORT, HOST, () => console.log(`即刻宝可梦卡片生成器 → http://${HOST || 'localhost'}:${PORT}`));
 }
 
-module.exports = { fetchUrl };
+handler.fetchUrl = fetchUrl;
+handler.handleRequest = handleRequest;
+module.exports = handler;

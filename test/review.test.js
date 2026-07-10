@@ -3,7 +3,8 @@ const assert = require('node:assert/strict');
 const http = require('node:http');
 const fs = require('node:fs');
 
-const { fetchUrl } = require('../server');
+const serverModule = require('../server');
+const { fetchUrl } = serverModule;
 
 async function loadCardModule() {
   const source = fs.readFileSync(require.resolve('../public/card.js'), 'utf8');
@@ -49,6 +50,11 @@ test('fetchUrl rejects an upstream response that exceeds the byte limit', async 
     fetchUrl(upstream.url, {}, 0, null, { maxBytes: 5, timeoutMs: 200 }),
     /响应过大/
   );
+});
+
+test('server module exports a callable HTTP handler for serverless runtimes', () => {
+  assert.equal(typeof serverModule, 'function');
+  assert.equal(typeof serverModule.fetchUrl, 'function');
 });
 
 test('fetchUrl rejects an upstream response that never completes', async (t) => {
