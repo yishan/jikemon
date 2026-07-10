@@ -48,7 +48,22 @@
     </main>
 
     <div class="actions" id="actions" hidden>
-      <button id="download">导出卡牌</button>
+      <div class="export-group">
+        <button id="download">导出卡牌</button>
+        <button
+          id="exportMenuBtn"
+          class="export-menu-btn"
+          type="button"
+          aria-haspopup="true"
+          aria-expanded="false"
+          aria-label="更多导出选项"
+        >▾</button>
+        <div class="export-menu" id="exportMenu" hidden>
+          <button type="button" data-export-action="copy-image">复制卡牌</button>
+          <button type="button" data-export-action="copy-link">复制链接</button>
+          <button type="button" data-export-action="export-image">导出图鉴</button>
+        </div>
+      </div>
     </div>
 
     <footer class="colophon">

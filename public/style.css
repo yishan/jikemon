@@ -114,6 +114,7 @@ h1 {
 .seeker input:focus { border-color: var(--gold); background: rgba(255, 255, 255, 0.11); }
 .seeker.is-catching input {
   color: transparent;
+  -webkit-text-fill-color: transparent; /* WebKit 禁用态文字不吃 color:transparent，需单独覆盖 */
   caret-color: transparent;
   border-color: rgba(232, 197, 101, 0.72);
   background: rgba(255, 255, 255, 0.06);
@@ -128,6 +129,8 @@ h1 {
   overflow: hidden;
   border: 1px solid rgba(232, 197, 101, 0.72);
   border-radius: 999px;
+  /* 不透明底色（半透明白叠在桌面深绿上），完全盖住下方地址文字 */
+  background: linear-gradient(rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.07)), var(--felt);
   color: var(--paper);
   font: 900 14px 'Noto Sans SC', sans-serif;
   letter-spacing: 1px;
@@ -1015,6 +1018,42 @@ body.is-duel-page .masthead h1 .slash {
   transition: background 0.2s, color 0.2s;
 }
 .actions button:hover { background: var(--gold); color: #3a2503; }
+
+/* 导出按钮 + 右侧下拉：胶囊按钮组 */
+.export-group {
+  position: relative;
+  display: inline-flex;
+  gap: 6px;
+}
+.actions .export-menu-btn {
+  padding: 12px 16px;
+  letter-spacing: 0;
+  font-size: 12px;
+  line-height: 1;
+}
+.actions .export-menu-btn[aria-expanded='true'] { background: var(--gold); color: #3a2503; }
+.export-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  min-width: 148px;
+  padding: 6px;
+  background: #16362a;
+  border: 1px solid rgba(232, 197, 101, 0.45);
+  border-radius: 14px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+}
+.actions .export-menu button {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  text-align: left;
+  letter-spacing: 1px;
+  border: none;
+  border-radius: 9px;
+}
+.actions .export-menu button:hover { background: var(--gold); color: #3a2503; }
 
 body.is-export-preview-open {
   width: 100%;

@@ -479,6 +479,9 @@ function renderDossier(c) {
   dossier.innerHTML = `
     <h2>即可梦档案</h2>
     <dl>
+      <dt>即友名称</dt><dd><b>${esc(c.name)}</b>${
+        c.username && !/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(c.username) ? `（@${esc(c.username)}）` : ''
+      }</dd>
       <dt>稀有度评分</dt><dd>${c.rarityScore} / 100 → <b>${c.rarity.key}（${c.rarity.label}）</b></dd>
       <dt>突出特质</dt><dd><b>${c.trait}</b>（${c.traitWhy}）</dd>
       <dt>属性判定</dt><dd>${c.type.icon} ${c.type.name}系（圈子投票 + 简介关键词）</dd>
@@ -1286,11 +1289,20 @@ function roundRectPath(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-// 把卡片矢量图合成到竖版分享图上：深色背景 + 背光 + 顶部标题 + 底部网址（参考 gitfut）
-async function composeExport(cardImg, artAssets = {}) {
+// 把卡片矢量图合成到竖版分享图上。
+// variant = 'full'：图鉴海报（深色背景 + 背光 + 顶部标题 + 底部特质/网址，参考 gitfut）
+// variant = 'plain'：纯卡牌（小边距，仅卡牌本体 + 下方金色 JIKÉMON）
+async function composeExport(cardImg, artAssets = {}, variant = 'full') {
   const S = 3; // 输出倍率
   const CW = 366, CH = 512; // 卡片逻辑尺寸
-  const PAD_X = 74, TOP = 42, TITLE_H = 126, GAP_TOP = 30, GAP_BOT = 40, FOOT_H = 122, BOT = 46;
+  const full = variant === 'full';
+  const PAD_X = full ? 74 : 30;
+  const TOP = full ? 42 : 34;
+  const TITLE_H = full ? 126 : 0;
+  const GAP_TOP = full ? 30 : 0;
+  const GAP_BOT = full ? 40 : 26;
+  const FOOT_H = full ? 122 : 18;
+  const BOT = full ? 46 : 30;
   const W = CW + PAD_X * 2;
   const H = TOP + TITLE_H + GAP_TOP + CH + GAP_BOT + FOOT_H + BOT;
   const cardX = PAD_X, cardY = TOP + TITLE_H + GAP_TOP;
@@ -1351,6 +1363,17 @@ async function composeExport(cardImg, artAssets = {}) {
   await waitForFontsReady();
   ctx.textAlign = 'center';
   const setLS = (v) => { if ('letterSpacing' in ctx) ctx.letterSpacing = v; };
+  const footY = cardY + CH + GAP_BOT;
+
+  if (!full) {
+    // 纯卡牌版：仅在卡下方居中一个金色 JIKÉMON
+    ctx.font = '900 15px "M PLUS Rounded 1c", "Noto Sans SC", sans-serif';
+    setLS('4px');
+    ctx.fillStyle = '#e8c565';
+    ctx.fillText('JIKÉMON', cx, footY + 14);
+    setLS('0px');
+    return cv;
+  }
 
   // 顶部标题「即可梦图鉴」（金色渐变 + 轻投影）
   ctx.font = '44px "ZCOOL QingKe HuangYou", sans-serif';
@@ -1374,7 +1397,6 @@ async function composeExport(cardImg, artAssets = {}) {
   ctx.fillText('JIKÉMON · 把你的即刻主页变成专属卡牌', cx, TOP + 100);
 
   // 底部：特质关键词 + 网址
-  const footY = cardY + CH + GAP_BOT;
   ctx.font = '900 22px "Noto Sans SC", sans-serif';
   setLS('2px');
   ctx.fillStyle = '#c2cedd';
@@ -1389,11 +1411,8 @@ async function composeExport(cardImg, artAssets = {}) {
   return cv;
 }
 
-$('download').addEventListener('click', async () => {
-  const btn = $('download');
-  const useMobilePreview = shouldUseMobileExportPreview();
-  btn.disabled = true;
-  btn.textContent = '合成卡牌中…';
+// 合成当前卡片的分享图 PNG blob（导出 / 复制图片共用）
+async function composeCardPngBlob(variant = 'plain') {
   const prevTransform = cardEl.style.transform;
   cardEl.style.transform = 'none';
   cardEl.classList.add('is-exporting');
@@ -1412,8 +1431,20 @@ $('download').addEventListener('click', async () => {
     // （用 setTimeout 而非 rAF：后台/隐藏标签页 rAF 会被暂停导致卡死）
     await wait(120);
 
-    const composed = await composeExport(img, artAssets);
-    const blob = await canvasToPngBlob(composed);
+    const composed = await composeExport(img, artAssets, variant);
+    return await canvasToPngBlob(composed);
+  } finally {
+    cardEl.classList.remove('is-exporting');
+    cardEl.style.transform = prevTransform;
+  }
+}
+
+async function exportCardImage(btn, idleText, variant = 'plain') {
+  const useMobilePreview = shouldUseMobileExportPreview();
+  btn.disabled = true;
+  btn.textContent = '合成卡牌中…';
+  try {
+    const blob = await composeCardPngBlob(variant);
     if (useMobilePreview) {
       showInlineExportPreview(blob);
     } else {
@@ -1422,9 +1453,112 @@ $('download').addEventListener('click', async () => {
   } catch (err) {
     setStatus('导出失败：' + err.message);
   } finally {
-    cardEl.classList.remove('is-exporting');
-    cardEl.style.transform = prevTransform;
     btn.disabled = false;
-    btn.textContent = '导出卡牌';
+    btn.textContent = idleText;
+  }
+}
+
+// 导出卡牌：纯卡牌版（小边距 + 金色 JIKÉMON）
+$('download').addEventListener('click', () => exportCardImage($('download'), '导出卡牌', 'plain'));
+
+/* ---- 导出下拉菜单：复制卡牌 / 复制链接 / 导出图鉴 ---- */
+const exportMenuBtn = $('exportMenuBtn');
+const exportMenu = $('exportMenu');
+let statusResetTimer = 0;
+
+function flashStatus(msg) {
+  clearTimeout(statusResetTimer);
+  setStatus(msg);
+  statusResetTimer = setTimeout(() => {
+    // 只清除自己写入的提示，避免误清后续出现的其它状态信息
+    if (status.textContent === msg) setStatus('');
+  }, 2400);
+}
+
+function toggleExportMenu(open) {
+  const next = open ?? exportMenu.hidden;
+  exportMenu.hidden = !next;
+  exportMenuBtn.setAttribute('aria-expanded', String(next));
+}
+
+exportMenuBtn?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  toggleExportMenu();
+});
+
+document.addEventListener('click', (e) => {
+  if (!exportMenu || exportMenu.hidden) return;
+  if (!exportMenu.contains(e.target) && e.target !== exportMenuBtn) toggleExportMenu(false);
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && exportMenu && !exportMenu.hidden) toggleExportMenu(false);
+});
+
+// 复制图片：优先把 blob Promise 直接交给 ClipboardItem（Safari 需在用户手势内同步调用），
+// 不支持 Promise 入参的浏览器回退为先合成再写入。
+async function copyCardImage() {
+  if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
+    throw new Error('当前浏览器不支持复制图片，请使用「导出卡牌」');
+  }
+  const blobPromise = composeCardPngBlob();
+  try {
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blobPromise })]);
+  } catch {
+    const blob = await blobPromise;
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+  }
+}
+
+async function copyPageLink() {
+  const url = location.href;
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(url);
+    return;
+  }
+  // 旧浏览器回退：临时 textarea + execCommand
+  const ta = document.createElement('textarea');
+  ta.value = url;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.append(ta);
+  ta.select();
+  const ok = document.execCommand('copy');
+  ta.remove();
+  if (!ok) throw new Error('复制失败，请手动复制地址栏链接');
+}
+
+exportMenu?.addEventListener('click', async (e) => {
+  const item = e.target.closest('[data-export-action]');
+  if (!item) return;
+  const action = item.dataset.exportAction;
+  toggleExportMenu(false);
+
+  if (action === 'export-image') {
+    // 导出图鉴：完整海报版（标题 + 特质 + 网址）
+    exportCardImage($('download'), '导出卡牌', 'full');
+    return;
+  }
+
+  if (action === 'copy-link') {
+    try {
+      await copyPageLink();
+      flashStatus('🔗 链接已复制到剪贴板');
+    } catch (err) {
+      flashStatus('复制链接失败：' + err.message);
+    }
+    return;
+  }
+
+  if (action === 'copy-image') {
+    exportMenuBtn.disabled = true;
+    try {
+      await copyCardImage();
+      flashStatus('🖼️ 卡牌图片已复制到剪贴板');
+    } catch (err) {
+      flashStatus('复制图片失败：' + err.message);
+    } finally {
+      exportMenuBtn.disabled = false;
+    }
   }
 });
