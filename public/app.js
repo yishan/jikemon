@@ -1,5 +1,6 @@
 import { buildCard, buildDuel } from './card.js';
 import { createExportSnapshot, exportIsCurrent } from './export-session.js';
+import { cardBackMarkup, createBrandCardBackDossier, createCardBackDossier } from './card-back.js';
 
 const $ = (id) => document.getElementById(id);
 const form = $('form');
@@ -13,6 +14,9 @@ const dossier = $('dossier');
 const actions = $('actions');
 const exportGroup = $('exportGroup');
 const duelEntryBtn = $('duelEntryBtn');
+const brandBackPreview = $('brandBackPreview');
+const brandBackCard = $('brandBackCard');
+const brandBackTilt = $('brandBackTilt');
 
 let currentCardNo = ''; // 当前卡片编号（如 No.1228），用于导出文件名
 let currentCard = null; // 当前卡片对象，供导出合成读取属性/特质
@@ -46,6 +50,7 @@ function setExportControlsDisabled(disabled) {
       duelEntryBtn,
       $('download'),
       $('exportMenuBtn'),
+      ...document.querySelectorAll('[data-export-action]'),
       ...document.querySelectorAll('.duel-seeker input, .duel-challenge-btn, .duel-swap-btn'),
     ].filter(Boolean);
     exportControlStates = [...new Set(controls)].map((el) => ({ el, disabled: el.disabled }));
@@ -411,7 +416,15 @@ function renderMysteryCardInto(el, hint) {
 
 // 抓取前的首页神秘占位卡：中央浮着抓取按钮，吸引用户开卡
 function renderPlaceholder() {
+  document.body.classList.remove('has-card-back-compare');
+  if (brandBackPreview) brandBackPreview.hidden = true;
   renderMysteryCardInto(cardEl, '在上方粘贴你的即刻主页链接，点击中央「捕捉」，开启属于你的专属宝可即。');
+}
+
+function renderBrandBackPreview() {
+  if (!brandBackCard) return;
+  brandBackCard.innerHTML = cardBackMarkup(createBrandCardBackDossier());
+  brandBackCard.dataset.rarity = 'SR';
 }
 
 // 把十六进制色与白色按比例混合，返回具体 rgb()。
@@ -600,6 +613,9 @@ function render(c) {
   arena.hidden = false;
   updateHomeActions();
   dossier.hidden = false;
+  renderBrandBackPreview();
+  if (brandBackPreview) brandBackPreview.hidden = false;
+  document.body.classList.add('has-card-back-compare');
   setTimeout(celebrate, 140); // 与卡片弹出同步爆开礼花
 }
 
@@ -610,6 +626,7 @@ function setupDuelChrome() {
   currentCard = null;
   currentCardNo = '';
   document.body.classList.add('is-duel-page');
+  document.body.classList.remove('has-card-back-compare');
   const titleEl = document.querySelector('.masthead h1');
   const subEl = document.querySelector('.masthead .sub');
   if (titleEl) titleEl.textContent = '宝可即决斗';
@@ -618,6 +635,7 @@ function setupDuelChrome() {
   form.hidden = true;
   actions.hidden = true;
   dossier.hidden = true;
+  if (brandBackPreview) brandBackPreview.hidden = true;
   openBtn.hidden = true;
   arena.hidden = false;
   arena.className = 'arena duel-arena';
@@ -1104,6 +1122,11 @@ function exportFileName() {
   return no ? `pokeji-card-${no}.png` : 'pokeji-card.png';
 }
 
+function exportBackFileName() {
+  const no = (currentCardNo.match(/\d+/) || [])[0];
+  return no ? `pokeji-card-back-${no}.png` : 'pokeji-card-back.png';
+}
+
 function canvasToPngBlob(canvas) {
   return new Promise((resolve, reject) => {
     if (canvas.toBlob) {
@@ -1216,6 +1239,7 @@ function downloadPngBlob(blob, filename) {
 
 /* ---- 3D 倾斜 + 镭射光随鼠标移动 ---- */
 attachTilt(tilt, cardEl);
+attachTilt(brandBackTilt, brandBackCard);
 
 /* ---- 导出 PNG ----
  * html-to-image 通过 SVG foreignObject 走浏览器原生渲染，
@@ -1674,6 +1698,53 @@ async function composeCardPngBlob(variant = 'plain') {
   }
 }
 
+// 卡背导出保持与正面完全一致的 366×512 卡片规格；不附加海报留白或文案。
+async function composeCardBackPngBlob() {
+  if (exportBusy) throw new Error('已有导出任务进行中');
+  if (!currentCard) throw new Error('当前没有可导出的卡片');
+
+  const token = ++exportGeneration;
+  exportBusy = true;
+  setExportControlsDisabled(true);
+
+  const backRoot = document.createElement('article');
+  backRoot.className = 'card card-back';
+  backRoot.dataset.rarity = 'SR';
+  backRoot.style.transform = 'none';
+  backRoot.innerHTML = cardBackMarkup(createCardBackDossier(currentCard));
+
+  const host = document.createElement('div');
+  host.style.position = 'fixed';
+  host.style.left = '-100000px';
+  host.style.top = '0';
+  host.style.width = '366px';
+  host.style.pointerEvents = 'none';
+  host.append(backRoot);
+  document.body.append(host);
+
+  try {
+    assertExportCurrent(token);
+    await waitForPaint();
+    assertExportCurrent(token);
+    const fontEmbedCSS = await buildFontEmbedCSS(backRoot);
+    assertExportCurrent(token);
+    const svgUrl = await htmlToImage.toSvg(backRoot, { fontEmbedCSS, cacheBust: true });
+    const img = await loadImage(svgUrl, { timeoutMs: 8000, label: '卡牌背面 SVG' });
+    assertExportCurrent(token);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 366 * 3;
+    canvas.height = 512 * 3;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return await canvasToPngBlob(canvas);
+  } finally {
+    host.remove();
+    exportBusy = false;
+    setExportControlsDisabled(false);
+  }
+}
+
 async function exportCardImage(btn, idleText, variant = 'plain') {
   const useMobilePreview = shouldUseMobileExportPreview();
   btn.disabled = true;
@@ -1690,6 +1761,23 @@ async function exportCardImage(btn, idleText, variant = 'plain') {
   } finally {
     btn.disabled = false;
     btn.textContent = idleText;
+  }
+}
+
+async function exportCardBack(btn) {
+  const useMobilePreview = shouldUseMobileExportPreview();
+  btn.disabled = true;
+  const original = btn.innerHTML;
+  btn.textContent = '合成背面中…';
+  try {
+    const blob = await composeCardBackPngBlob();
+    if (useMobilePreview) showInlineExportPreview(blob);
+    else downloadPngBlob(blob, exportBackFileName());
+  } catch (err) {
+    setStatus('导出背面失败：' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = original;
   }
 }
 
@@ -1772,6 +1860,11 @@ exportMenu?.addEventListener('click', async (e) => {
   if (action === 'export-image') {
     // 导出图鉴：完整海报版（标题 + 特质 + 网址）
     exportCardImage($('download'), '导出卡牌', 'full');
+    return;
+  }
+
+  if (action === 'export-card-back') {
+    exportCardBack(item);
     return;
   }
 

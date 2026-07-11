@@ -45,6 +45,14 @@
       </div>
 
       <aside class="dossier" id="dossier" hidden><!-- 评分说明由 app.js 渲染 --></aside>
+
+      <aside class="card-back-preview" id="brandBackPreview" hidden aria-label="卡牌背面品牌形象图">
+        <div class="card-back-preview__label"><span>正反面对比</span><small>CARD BACK STUDY</small></div>
+        <div class="card-tilt card-back-tilt" id="brandBackTilt">
+          <article class="card card-back card-back--brand" id="brandBackCard"></article>
+        </div>
+        <p>品牌卡背 · 不带个人资料，用于确认 Pokéji 的收藏卡识别感。</p>
+      </aside>
     </main>
 
     <div class="actions" id="actions" hidden>
@@ -80,6 +88,13 @@
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+          </button>
+          <button type="button" data-export-action="export-card-back">
+            导出卡牌背面
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="4" y="3" width="16" height="18" rx="2" />
+              <path d="M8 8h8M8 12h8M8 16h5" />
             </svg>
           </button>
         </div>
