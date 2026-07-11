@@ -38,7 +38,6 @@ body::before {
   position: relative;
   overflow-x: clip; /* 窄屏卡片等比缩放后，卡框布局盒仍是 366px，裁掉两侧空白避免横向滚动 */
 }
-body.has-card-back-compare .stage { max-width: 1190px; }
 
 /* ============ 标题区 ============ */
 .masthead { text-align: center; margin-bottom: 36px; }
@@ -937,14 +936,6 @@ body.is-duel-page .masthead h1 .slash {
   background-size: 230% 100%;
   background-position: var(--hx, 50%) 50%;
 }
-.card-back--brand .card-back__identity-block b { font-size: 17px; }
-
-/* 卡背品牌图与正面、档案并排，宽屏可直接比对；窄屏自然纵向排列。 */
-.card-back-preview { width: 366px; flex: none; }
-.card-back-preview__label { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; color: var(--gold); font: 400 16px 'ZCOOL QingKe HuangYou', sans-serif; letter-spacing: 2px; }
-.card-back-preview__label small { color: #9db8a7; font: 700 8px 'M PLUS Rounded 1c', sans-serif; letter-spacing: 2px; }
-.card-back-preview > p { margin-top: 10px; color: #89a493; font-size: 10px; line-height: 1.5; text-align: center; }
-
 .card-inner {
   background: var(--body-bg);
   border-radius: 8px;

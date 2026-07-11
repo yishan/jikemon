@@ -1,6 +1,6 @@
 import { buildCard, buildDuel } from './card.js';
 import { createExportSnapshot, exportIsCurrent } from './export-session.js';
-import { cardBackMarkup, createBrandCardBackDossier, createCardBackDossier } from './card-back.js';
+import { cardBackMarkup, createCardBackDossier } from './card-back.js';
 
 const $ = (id) => document.getElementById(id);
 const form = $('form');
@@ -14,9 +14,6 @@ const dossier = $('dossier');
 const actions = $('actions');
 const exportGroup = $('exportGroup');
 const duelEntryBtn = $('duelEntryBtn');
-const brandBackPreview = $('brandBackPreview');
-const brandBackCard = $('brandBackCard');
-const brandBackTilt = $('brandBackTilt');
 
 let currentCardNo = ''; // 当前卡片编号（如 No.1228），用于导出文件名
 let currentCard = null; // 当前卡片对象，供导出合成读取属性/特质
@@ -416,15 +413,7 @@ function renderMysteryCardInto(el, hint) {
 
 // 抓取前的首页神秘占位卡：中央浮着抓取按钮，吸引用户开卡
 function renderPlaceholder() {
-  document.body.classList.remove('has-card-back-compare');
-  if (brandBackPreview) brandBackPreview.hidden = true;
   renderMysteryCardInto(cardEl, '在上方粘贴你的即刻主页链接，点击中央「捕捉」，开启属于你的专属宝可即。');
-}
-
-function renderBrandBackPreview() {
-  if (!brandBackCard) return;
-  brandBackCard.innerHTML = cardBackMarkup(createBrandCardBackDossier());
-  brandBackCard.dataset.rarity = 'SR';
 }
 
 // 把十六进制色与白色按比例混合，返回具体 rgb()。
@@ -613,9 +602,6 @@ function render(c) {
   arena.hidden = false;
   updateHomeActions();
   dossier.hidden = false;
-  renderBrandBackPreview();
-  if (brandBackPreview) brandBackPreview.hidden = false;
-  document.body.classList.add('has-card-back-compare');
   setTimeout(celebrate, 140); // 与卡片弹出同步爆开礼花
 }
 
@@ -626,7 +612,6 @@ function setupDuelChrome() {
   currentCard = null;
   currentCardNo = '';
   document.body.classList.add('is-duel-page');
-  document.body.classList.remove('has-card-back-compare');
   const titleEl = document.querySelector('.masthead h1');
   const subEl = document.querySelector('.masthead .sub');
   if (titleEl) titleEl.textContent = '宝可即决斗';
@@ -635,7 +620,6 @@ function setupDuelChrome() {
   form.hidden = true;
   actions.hidden = true;
   dossier.hidden = true;
-  if (brandBackPreview) brandBackPreview.hidden = true;
   openBtn.hidden = true;
   arena.hidden = false;
   arena.className = 'arena duel-arena';
@@ -1239,7 +1223,6 @@ function downloadPngBlob(blob, filename) {
 
 /* ---- 3D 倾斜 + 镭射光随鼠标移动 ---- */
 attachTilt(tilt, cardEl);
-attachTilt(brandBackTilt, brandBackCard);
 
 /* ---- 导出 PNG ----
  * html-to-image 通过 SVG foreignObject 走浏览器原生渲染，

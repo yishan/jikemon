@@ -28,24 +28,6 @@ export function createCardBackDossier(card) {
   };
 }
 
-export function createBrandCardBackDossier() {
-  return {
-    identity: 'POKÉJI.COM',
-    name: '宝可即档案库',
-    type: '✦ 即刻森林',
-    rarity: 'ARCHIVE · 收藏版',
-    stage: '连接已建立',
-    trait: '好奇',
-    hp: '∞',
-    followers: '每一位即友',
-    likes: '每一次共鸣',
-    archive: '2026 年启用',
-    activity: '持续收录中',
-    skills: ['把主页变成卡牌', '在兴趣里相遇'],
-    cardNo: 'No.PJ01',
-  };
-}
-
 export function cardBackMarkup(dossier) {
   const skills = (dossier.skills || []).map((skill) => `<li>${esc(skill)}</li>`).join('');
   return `

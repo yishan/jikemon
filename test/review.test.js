@@ -174,4 +174,5 @@ test('card back turns a profile into a compact Pokéji dossier', async () => {
   assert.deepEqual(dossier.skills, ['闪电吐槽', '静电刷屏']);
   assert.match(back.cardBackMarkup(dossier), /宝可即档案/);
   assert.match(back.cardBackMarkup(dossier), /POKÉJI/);
+  assert.equal('createBrandCardBackDossier' in back, false);
 });
