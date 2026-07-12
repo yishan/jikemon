@@ -154,8 +154,8 @@ async function fetchDuelCached(leftRaw, rightRaw) {
   return request;
 }
 
-// 卡片固定 366px 设计，窄屏按可用宽度等比缩放（写入 CSS 变量 --m），避免文字重排导致排版变形
-const CARD_W = 366;
+// 卡片固定 504px 设计，窄屏按可用宽度等比缩放（写入 CSS 变量 --m），避免文字重排导致排版变形
+const CARD_W = 504;
 const stageEl = document.querySelector('.stage');
 function fitCard() {
   const cs = getComputedStyle(stageEl);
@@ -1306,7 +1306,7 @@ function rectInExport(el, cardX, cardY, sourceCardEl) {
   const cardRect = sourceCardEl.getBoundingClientRect();
   if (!cardRect.width) return null;
   const r = el.getBoundingClientRect();
-  const k = 366 / cardRect.width;
+  const k = 504 / cardRect.width;
   return {
     x: cardX + (r.left - cardRect.left) * k,
     y: cardY + (r.top - cardRect.top) * k,
@@ -1368,7 +1368,7 @@ function drawCardArt(ctx, cardX, cardY, assets = {}, sourceCardEl) {
   const artEl = sourceCardEl.querySelector('.card-art');
   if (!artEl) return;
   const cardRect = sourceCardEl.getBoundingClientRect();
-  const k = cardRect.width ? 366 / cardRect.width : 1; // 逻辑像素 / 实际像素（k≈1）
+  const k = cardRect.width ? 504 / cardRect.width : 1; // 逻辑像素 / 实际像素（k≈1）
   const a = rectInExport(artEl, cardX, cardY, sourceCardEl);
   if (!a) return;
   const artStyle = getComputedStyle(artEl);
@@ -1464,7 +1464,7 @@ function roundRectPath(ctx, x, y, w, h, r) {
 // variant = 'plain'：纯卡牌（小边距，仅卡牌本体 + 下方金色 POKÉJI）
 async function composeExport(cardImg, artAssets = {}, variant = 'full', dossierImg = null, snapshot) {
   const S = 3; // 输出倍率
-  const CW = 366, CH = 512; // 卡片逻辑尺寸
+  const CW = 504, CH = 704; // 卡片逻辑尺寸
   const full = variant === 'full';
   const PAD_X = full ? 74 : 30;
   const TOP = full ? 42 : 34;
@@ -1625,7 +1625,7 @@ async function composeCardPngBlob(variant = 'plain') {
   host.style.position = 'fixed';
   host.style.left = '-100000px';
   host.style.top = '0';
-  host.style.width = '366px';
+  host.style.width = '504px';
   host.style.pointerEvents = 'none';
   host.append(cardRoot);
   if (dossierRoot) host.append(dossierRoot);
@@ -1681,7 +1681,7 @@ async function composeCardPngBlob(variant = 'plain') {
   }
 }
 
-// 卡背导出保持与正面完全一致的 366×512 卡片规格；不附加海报留白或文案。
+// 卡背导出保持与正面完全一致的 504×704 卡片规格；不附加海报留白或文案。
 async function composeCardBackPngBlob() {
   if (exportBusy) throw new Error('已有导出任务进行中');
   if (!currentCard) throw new Error('当前没有可导出的卡片');
@@ -1700,7 +1700,7 @@ async function composeCardBackPngBlob() {
   host.style.position = 'fixed';
   host.style.left = '-100000px';
   host.style.top = '0';
-  host.style.width = '366px';
+  host.style.width = '504px';
   host.style.pointerEvents = 'none';
   host.append(backRoot);
   document.body.append(host);
@@ -1716,8 +1716,8 @@ async function composeCardBackPngBlob() {
     assertExportCurrent(token);
 
     const canvas = document.createElement('canvas');
-    canvas.width = 366 * 3;
-    canvas.height = 512 * 3;
+    canvas.width = 504 * 3;
+    canvas.height = 704 * 3;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     return await canvasToPngBlob(canvas);
