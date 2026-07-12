@@ -1,6 +1,6 @@
 import { buildCard, buildDuel } from './card.js';
 import { createExportSnapshot, exportIsCurrent } from './export-session.js';
-import { cardBackMarkup, createCardBackDossier } from './card-back.js';
+import { cardBackMarkup } from './card-back.js';
 
 const $ = (id) => document.getElementById(id);
 const form = $('form');
@@ -1694,7 +1694,7 @@ async function composeCardBackPngBlob() {
   backRoot.className = 'card card-back';
   backRoot.dataset.rarity = 'SR';
   backRoot.style.transform = 'none';
-  backRoot.innerHTML = cardBackMarkup(createCardBackDossier(currentCard));
+  backRoot.innerHTML = cardBackMarkup();
 
   const host = document.createElement('div');
   host.style.position = 'fixed';

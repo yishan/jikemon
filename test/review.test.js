@@ -153,26 +153,18 @@ test('export snapshot owns card data and tracks cancellation generations', async
   assert.equal(session.exportIsCurrent(4, 5), false);
 });
 
-test('card back turns a profile into a compact Pokéji dossier', async () => {
+test('card back renders a generic POKEJY texture design without profile data', async () => {
   const back = await loadCardBackModule();
-  const dossier = back.createCardBackDossier({
-    name: '小明',
-    username: 'xiaoming',
-    type: { name: '雷', icon: '⚡' },
-    rarity: { key: 'SR', label: '超级稀有' },
-    stage: { label: '一阶进化' },
-    trait: '活力',
-    hp: 180,
-    cardNo: 'No.0711',
-    metrics: { followers: 1234, liked: 5678, years: '3.2', postsPerDay: '1.6' },
-    moves: [{ name: '闪电吐槽' }, { name: '静电刷屏' }],
-  });
+  const markup = back.cardBackMarkup();
 
-  assert.equal(dossier.identity, '@xiaoming');
-  assert.equal(dossier.type, '⚡ 雷系');
-  assert.equal(dossier.activity, '1.6 条 / 天');
-  assert.deepEqual(dossier.skills, ['闪电吐槽', '静电刷屏']);
-  assert.match(back.cardBackMarkup(dossier), /宝可即档案/);
-  assert.match(back.cardBackMarkup(dossier), /POKÉJI/);
+  assert.equal(typeof back.cardBackMarkup, 'function');
+  for (const letter of ['P', 'O', 'K', 'E', 'J', 'Y']) {
+    assert.match(markup, new RegExp(`>${letter}<`));
+  }
+  assert.match(markup, /POKÉJI/);
+  assert.match(markup, /WEB\.POKEJI\.COM/);
+  assert.equal(markup.includes('小明'), false);
+  assert.equal(markup.includes('@xiaoming'), false);
+  assert.equal('createCardBackDossier' in back, false);
   assert.equal('createBrandCardBackDossier' in back, false);
 });
