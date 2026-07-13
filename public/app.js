@@ -154,13 +154,15 @@ async function fetchDuelCached(leftRaw, rightRaw) {
   return request;
 }
 
-// 卡片固定 504px 设计，窄屏按可用宽度等比缩放（写入 CSS 变量 --m），避免文字重排导致排版变形
+// 卡片按 504px（63:88 印刷规格）设计并以此导出；页面上桌面端显示为 366px 宽，
+// 窄屏再按可用宽度进一步等比缩放（写入 CSS 变量 --m），避免文字重排导致排版变形
 const CARD_W = 504;
+const CARD_DISPLAY_W = 366;
 const stageEl = document.querySelector('.stage');
 function fitCard() {
   const cs = getComputedStyle(stageEl);
   const avail = stageEl.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-  const m = Math.min(1, avail / CARD_W);
+  const m = Math.min(CARD_DISPLAY_W, avail) / CARD_W;
   document.documentElement.style.setProperty('--m', m.toFixed(4));
 }
 fitCard();
@@ -440,7 +442,7 @@ function makeRippleDataUrl(w, h, strong, weak) {
   const cx = cw / 2;
   const cy = ch * 0.42; // 与原 CSS 的 circle at 50% 42% 对齐
   const maxR = Math.hypot(Math.max(cx, cw - cx), Math.max(cy, ch - cy));
-  const band = 11 * scale; // 半周期，环间距 11px
+  const band = 15 * scale; // 半周期，环间距 15px
   // 从外向内画交替色实心圆，形成同心环
   for (let i = Math.ceil(maxR / band); i >= 0; i--) {
     ctx.beginPath();
@@ -539,7 +541,7 @@ function renderCardElement(el, c, { reveal = false } = {}) {
   const artEl = el.querySelector('.card-art');
   if (artEl) {
     // 波纹作为 <img> 铺在最底层（object-fit:fill 拉伸到实际尺寸），此处用设计尺寸生成位图
-    const url = makeRippleDataUrl(320, 178, rippleStrong, rippleWeak);
+    const url = makeRippleDataUrl(426, 231, rippleStrong, rippleWeak);
     const rip = document.createElement('img');
     rip.className = 'art-ripple';
     rip.src = url;
@@ -1325,7 +1327,7 @@ function drawCardUnderlay(ctx, cardX, cardY, cw, ch, sourceCardEl) {
   const frameDeep = cssColor(cardStyle, '--frame-deep', '#40679e');
 
   ctx.save();
-  roundRectPath(ctx, cardX, cardY, cw, ch, 16);
+  roundRectPath(ctx, cardX, cardY, cw, ch, 22);
   const frameGradient = ctx.createLinearGradient(cardX, cardY, cardX + cw, cardY + ch);
   if (cardEl.dataset.rarity === 'UR') {
     frameGradient.addColorStop(0, '#f7c3d0');
@@ -1353,7 +1355,7 @@ function drawCardUnderlay(ctx, cardX, cardY, cw, ch, sourceCardEl) {
   const innerStyle = getComputedStyle(innerEl);
   const bodyBg = cssColor(cardStyle, '--body-bg', innerStyle.backgroundColor || '#fdf7e3');
   ctx.save();
-  roundRectPath(ctx, inner.x, inner.y, inner.w, inner.h, parseFloat(innerStyle.borderRadius) || 8);
+  roundRectPath(ctx, inner.x, inner.y, inner.w, inner.h, parseFloat(innerStyle.borderRadius) || 11);
   ctx.fillStyle = bodyBg;
   ctx.fill();
   ctx.lineWidth = 1;
@@ -1412,7 +1414,7 @@ function drawCardArt(ctx, cardX, cardY, assets = {}, sourceCardEl) {
     ctx.shadowOffsetY = 6;
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.arc(cx0, cy0, rad + 4, 0, Math.PI * 2);
+    ctx.arc(cx0, cy0, rad + 5, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
     ctx.save();
@@ -1430,7 +1432,7 @@ function drawCardArt(ctx, cardX, cardY, assets = {}, sourceCardEl) {
   const badges = artEl.querySelectorAll('.art-badges span');
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = '700 9px "Noto Sans SC", sans-serif';
+  ctx.font = '700 12.5px "Noto Sans SC", sans-serif';
   badges.forEach((b) => {
     const r = rectInExport(b, cardX, cardY, sourceCardEl);
     if (!r) return;
@@ -1466,20 +1468,21 @@ async function composeExport(cardImg, artAssets = {}, variant = 'full', dossierI
   const S = 3; // 输出倍率
   const CW = 504, CH = 704; // 卡片逻辑尺寸
   const full = variant === 'full';
-  const PAD_X = full ? 74 : 30;
-  const TOP = full ? 42 : 34;
-  const TITLE_H = full ? 126 : 0;
-  const GAP_TOP = full ? 30 : 0;
-  const GAP_BOT = full ? 40 : 26;
-  const FOOT_H = full ? 122 : 18;
-  const BOT = full ? 46 : 30;
+  const PAD_X = full ? 102 : 41;
+  const TOP = full ? 58 : 47;
+  const TITLE_H = full ? 173 : 0;
+  const GAP_TOP = full ? 41 : 0;
+  const GAP_BOT = full ? 55 : 36;
+  const FOOT_H = full ? 168 : 25;
+  const BOT = full ? 63 : 41;
 
-  // 图鉴版右侧档案面板：与卡牌顶部对齐，高于卡牌时等比缩小到同高
+  // 图鉴版右侧档案面板：面板按 300px 显示规格设计，导出时放大 1.375 与 504px 卡牌保持比例
+  // （SVG 快照是矢量，放大绘制不损清晰度）；高于卡牌时等比缩小到同高
   const hasDossier = full && dossierImg?.naturalWidth > 0;
-  const D_GAP = 36;
+  const D_GAP = 50;
   let DW = 0, DH = 0;
   if (hasDossier) {
-    const dScale = Math.min(1, CH / dossierImg.naturalHeight);
+    const dScale = Math.min(1.375, CH / dossierImg.naturalHeight);
     DW = dossierImg.naturalWidth * dScale;
     DH = dossierImg.naturalHeight * dScale;
   }
@@ -1521,9 +1524,9 @@ async function composeExport(cardImg, artAssets = {}, variant = 'full', dossierI
   // 卡片本体（补一层投影，SVG 导出会裁掉外阴影）
   ctx.save();
   ctx.shadowColor = 'rgba(0,0,0,0.55)';
-  ctx.shadowBlur = 34;
-  ctx.shadowOffsetY = 22;
-  roundRectPath(ctx, cardX, cardY, CW, CH, 16);
+  ctx.shadowBlur = 47;
+  ctx.shadowOffsetY = 30;
+  roundRectPath(ctx, cardX, cardY, CW, CH, 22);
   ctx.fillStyle = 'rgba(0,0,0,0.18)';
   ctx.fill();
   ctx.restore();
@@ -1531,7 +1534,7 @@ async function composeExport(cardImg, artAssets = {}, variant = 'full', dossierI
   drawCardUnderlay(ctx, cardX, cardY, CW, CH, snapshot.cardRoot);
 
   ctx.save();
-  roundRectPath(ctx, cardX, cardY, CW, CH, 16);
+  roundRectPath(ctx, cardX, cardY, CW, CH, 22);
   ctx.clip();
   ctx.drawImage(cardImg, cardX, cardY, CW, CH);
   ctx.restore();
@@ -1548,7 +1551,7 @@ async function composeExport(cardImg, artAssets = {}, variant = 'full', dossierI
     ctx.shadowColor = 'rgba(0,0,0,0.45)';
     ctx.shadowBlur = 26;
     ctx.shadowOffsetY = 14;
-    roundRectPath(ctx, dX, dY, DW, DH, 14);
+    roundRectPath(ctx, dX, dY, DW, DH, 19);
     ctx.fillStyle = '#10241c';
     ctx.fill();
     ctx.restore();
@@ -1563,45 +1566,45 @@ async function composeExport(cardImg, artAssets = {}, variant = 'full', dossierI
 
   if (!full) {
     // 纯卡牌版：仅在卡下方居中一个金色 POKÉJI
-    ctx.font = '900 15px "M PLUS Rounded 1c", "Noto Sans SC", sans-serif';
-    setLS('4px');
+    ctx.font = '900 21px "M PLUS Rounded 1c", "Noto Sans SC", sans-serif';
+    setLS('5.5px');
     ctx.fillStyle = '#e8c565';
-    ctx.fillText('POKÉJI', cx, footY + 14);
+    ctx.fillText('POKÉJI', cx, footY + 19);
     setLS('0px');
     return cv;
   }
 
   // 顶部标题「宝可即图鉴」（金色渐变 + 轻投影）
-  ctx.font = '44px "ZCOOL QingKe HuangYou", sans-serif';
-  setLS('6px');
-  const tg = ctx.createLinearGradient(0, TOP + 22, 0, TOP + 72);
+  ctx.font = '60px "ZCOOL QingKe HuangYou", sans-serif';
+  setLS('8px');
+  const tg = ctx.createLinearGradient(0, TOP + 30, 0, TOP + 99);
   tg.addColorStop(0, '#f6e79a');
   tg.addColorStop(1, '#dca93a');
   ctx.fillStyle = tg;
   ctx.shadowColor = 'rgba(0,0,0,0.4)';
-  ctx.shadowBlur = 8;
-  ctx.shadowOffsetY = 3;
-  ctx.fillText('宝可即图鉴', cx, TOP + 62);
+  ctx.shadowBlur = 11;
+  ctx.shadowOffsetY = 4;
+  ctx.fillText('宝可即图鉴', cx, TOP + 85);
   ctx.shadowColor = 'transparent';
   ctx.shadowBlur = 0;
   ctx.shadowOffsetY = 0;
 
   // 副标题
-  ctx.font = '14px "Noto Sans SC", sans-serif';
-  setLS('3px');
+  ctx.font = '19px "Noto Sans SC", sans-serif';
+  setLS('4px');
   ctx.fillStyle = '#9db8a7';
-  ctx.fillText('POKÉJI · 把你的即刻主页变成专属卡牌', cx, TOP + 100);
+  ctx.fillText('POKÉJI · 把你的即刻主页变成专属卡牌', cx, TOP + 138);
 
   // 底部：特质关键词 + 网址
-  ctx.font = '900 22px "Noto Sans SC", sans-serif';
-  setLS('2px');
+  ctx.font = '900 30px "Noto Sans SC", sans-serif';
+  setLS('3px');
   ctx.fillStyle = '#c2cedd';
-  ctx.fillText(`${snapshot.card.type.name}系 · ${snapshot.card.trait}`, cx, footY + 32);
+  ctx.fillText(`${snapshot.card.type.name}系 · ${snapshot.card.trait}`, cx, footY + 44);
 
-  ctx.font = '12px "M PLUS Rounded 1c", "Noto Sans SC", sans-serif';
+  ctx.font = '16px "M PLUS Rounded 1c", "Noto Sans SC", sans-serif';
   setLS('0px');
   ctx.fillStyle = '#e8c565';
-  ctx.fillText('web.pokeji.com', cx, footY + 82);
+  ctx.fillText('web.pokeji.com', cx, footY + 113);
 
   setLS('0px');
   return cv;

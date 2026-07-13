@@ -94,7 +94,7 @@ h1 {
 .seeker {
   display: flex;
   gap: 10px;
-  max-width: 504px;
+  max-width: 366px;
   margin: 0 auto 28px;
   position: relative;
   --catch-progress: 0;
@@ -230,7 +230,7 @@ h1 {
 
 /* ============ VS 对战页 ============ */
 body.is-duel-page .stage {
-  max-width: 1400px;
+  max-width: 1240px;
 }
 body.is-duel-page .masthead {
   margin-bottom: 30px;
@@ -287,7 +287,7 @@ body.is-duel-page .masthead h1 .slash {
 .duel-shell {
   width: 100%;
   display: grid;
-  grid-template-columns: minmax(260px, 504px) minmax(260px, 330px) minmax(260px, 504px);
+  grid-template-columns: minmax(260px, 366px) minmax(260px, 330px) minmax(260px, 366px);
   gap: 24px;
   align-items: start;
   justify-content: center;
@@ -300,7 +300,7 @@ body.is-duel-page .masthead h1 .slash {
   gap: 14px;
 }
 .duel-seeker {
-  width: min(100%, 504px);
+  width: min(100%, 366px);
   margin: 0 auto 2px;
 }
 .duel-seeker input {
@@ -313,7 +313,7 @@ body.is-duel-page .masthead h1 .slash {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  width: min(100%, 504px);
+  width: min(100%, 366px);
   margin: 0 auto 2px;
   padding: 10px 16px;
   font: 500 13px 'Noto Sans SC', sans-serif;
@@ -337,7 +337,7 @@ body.is-duel-page .masthead h1 .slash {
   display: none;
 }
 .duel-card-meta {
-  width: min(100%, 504px);
+  width: min(100%, 366px);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -582,7 +582,7 @@ body.is-duel-page .masthead h1 .slash {
   text-align: right;
 }
 .duel-loading {
-  width: min(100%, 504px);
+  width: min(100%, 366px);
   min-height: 180px;
   margin: 20px auto 0;
   display: flex;
@@ -693,7 +693,7 @@ body.is-duel-page .masthead h1 .slash {
   display: flex;
   align-items: center;
   justify-content: center;
-  font: 900 130px 'M PLUS Rounded 1c', sans-serif;
+  font: 900 180px 'M PLUS Rounded 1c', sans-serif;
   color: #cfc8b6;
   text-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
 }
@@ -721,8 +721,8 @@ body.is-duel-page .masthead h1 .slash {
   --body-bg: #fdf7e3;
   width: 504px;
   height: 704px;
-  border-radius: 16px;
-  padding: 13px; /* 四边卡框等宽 */
+  border-radius: 22px;
+  padding: 18px; /* 四边卡框等宽 */
   background: linear-gradient(135deg, var(--frame) 0%, var(--frame-deep) 50%, var(--frame) 100%);
   box-shadow:
     0 2px 0 rgba(255, 255, 255, 0.35) inset,
@@ -953,11 +953,11 @@ body.is-duel-page .masthead h1 .slash {
 }
 .card-inner {
   background: var(--body-bg);
-  border-radius: 8px;
+  border-radius: 11px;
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 8px 10px 6px;
+  padding: 11px 14px 8px;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0, 0, 0, 0.2) inset;
   position: relative;
   z-index: 2;
@@ -965,11 +965,11 @@ body.is-duel-page .masthead h1 .slash {
 }
 
 /* —— 顶栏 —— */
-.card-top { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.card-top { display: flex; align-items: baseline; gap: 11px; margin-bottom: 8px; }
 .stage-chip {
-  font-size: 9px;
+  font-size: 12.5px;
   font-weight: 700;
-  padding: 2px 7px;
+  padding: 3px 10px;
   border-radius: 999px;
   background: linear-gradient(to bottom, #fff, #d8d2c2);
   border: 1px solid #a89f8e;
@@ -990,8 +990,8 @@ body.is-duel-page .masthead h1 .slash {
 }
 .card-name {
   font-family: 'ZCOOL QingKe HuangYou', sans-serif;
-  font-size: 24px;
-  letter-spacing: 1px;
+  font-size: 33px;
+  letter-spacing: 1.5px;
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1000,29 +1000,29 @@ body.is-duel-page .masthead h1 .slash {
 .card-hp {
   font-family: 'M PLUS Rounded 1c', sans-serif;
   font-weight: 900;
-  font-size: 22px;
+  font-size: 30px;
   color: #c22;
   white-space: nowrap;
 }
-.card-hp small { font-size: 11px; margin-right: 2px; }
+.card-hp small { font-size: 15px; margin-right: 3px; }
 .type-orb {
-  width: 24px; height: 24px;
+  width: 33px; height: 33px;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: 18px;
   align-self: center;
   flex: none;
   background: radial-gradient(circle at 32% 28%, #fff8 0 18%, transparent 40%), var(--type-color, #999);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 1.5px #fff inset;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4), 0 0 0 2px #fff inset;
 }
 
 /* —— 画面 —— */
 .card-art {
-  height: 178px;
+  height: 245px;
   flex: none;
-  border: 5px solid;
+  border: 7px solid;
   border-image: linear-gradient(to bottom, #efe6c8, #b8ad8a) 1;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) inset, 0 1px 0 #fff;
   position: relative;
@@ -1047,20 +1047,20 @@ body.is-duel-page .masthead h1 .slash {
   border-radius: 50%;
   object-fit: cover;
   z-index: 1;
-  box-shadow: 0 0 0 4px #fffc, 0 10px 26px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 0 0 5px #fffc, 0 14px 36px rgba(0, 0, 0, 0.35);
 }
 .art-badges {
   position: absolute;
-  right: 6px; top: 6px;
+  right: 8px; top: 8px;
   display: flex;
-  gap: 4px;
+  gap: 5px;
   z-index: 2;
 }
 .art-badges span {
-  font-size: 9px;
+  font-size: 12.5px;
   font-weight: 700;
   color: #fff;
-  padding: 2px 6px;
+  padding: 3px 8px;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(2px);
@@ -1068,44 +1068,44 @@ body.is-duel-page .masthead h1 .slash {
 
 /* —— 图鉴信息条 —— */
 .card-info {
-  font-size: 9px;
+  font-size: 12.5px;
   text-align: center;
-  padding: 3px 6px;
-  margin: 5px 8px 6px;
+  padding: 4px 8px;
+  margin: 7px 11px 8px;
   background: linear-gradient(to bottom, #e9dfbe, #d9cda4);
   border-radius: 999px;
   border: 1px solid #b3a67c;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.7px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 /* —— 技能区 —— */
-.moves { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; padding: 0 2px; min-height: 0; overflow: hidden; }
-.move { display: flex; align-items: flex-start; gap: 8px; padding: 2px 0; }
+.moves { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; padding: 0 3px; min-height: 0; overflow: hidden; }
+.move { display: flex; align-items: flex-start; gap: 11px; padding: 3px 0; }
 .move + .move { border-top: 1px solid #0002; }
-/* 固定列宽（按最多 3 个能量图标预留 17×3 + 2×2 = 55px），使不同图标数的技能名左对齐 */
-.move-cost { display: flex; gap: 2px; flex: none; width: 55px; padding-top: 2px; }
+/* 固定列宽（按最多 3 个能量图标预留 23×3 + 3×2 = 75px），使不同图标数的技能名左对齐 */
+.move-cost { display: flex; gap: 3px; flex: none; width: 75px; padding-top: 3px; }
 .energy {
-  width: 17px; height: 17px;
+  width: 23px; height: 23px;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 9px;
+  font-size: 12.5px;
   background: radial-gradient(circle at 32% 28%, #fff8 0 18%, transparent 40%), var(--e-color, #999);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 0 0 1px #fff inset;
 }
 .move-main { flex: 1; min-width: 0; }
-.move-head { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
-.move-name { font-weight: 900; font-size: 14px; letter-spacing: 0.5px; }
-.move-dmg { font-family: 'M PLUS Rounded 1c', sans-serif; font-weight: 900; font-size: 17px; }
+.move-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.move-name { font-weight: 900; font-size: 19px; letter-spacing: 0.7px; }
+.move-dmg { font-family: 'M PLUS Rounded 1c', sans-serif; font-weight: 900; font-size: 23px; }
 .move-text {
-  font-size: 9px;
+  font-size: 12.5px;
   line-height: 1.4;
   color: #4a4437;
-  margin-top: 1px;
+  margin-top: 2px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -1115,20 +1115,20 @@ body.is-duel-page .masthead h1 .slash {
 /* —— 弱点 / 抵抗 / 撤退 —— */
 .card-bottom {
   display: flex;
-  border-top: 2px solid #0003;
-  padding: 3px 2px 2px;
-  font-size: 8.5px;
-  gap: 4px;
+  border-top: 3px solid #0003;
+  padding: 4px 3px 3px;
+  font-size: 11.5px;
+  gap: 6px;
   flex: none;
 }
 .cb-cell { flex: 1; text-align: center; min-width: 0; }
-.cb-cell b { display: block; font-size: 8px; color: #6b6350; letter-spacing: 1px; margin-bottom: 2px; }
-.cb-cell .energy { width: 14px; height: 14px; font-size: 8px; }
-.cb-val { display: inline-flex; align-items: center; gap: 2px; font-weight: 700; }
+.cb-cell b { display: block; font-size: 11px; color: #6b6350; letter-spacing: 1.5px; margin-bottom: 3px; }
+.cb-cell .energy { width: 19px; height: 19px; font-size: 11px; }
+.cb-val { display: inline-flex; align-items: center; gap: 3px; font-weight: 700; }
 .cb-note {
   display: block;
-  margin-top: 1px;
-  font-size: 7px;
+  margin-top: 2px;
+  font-size: 9.5px;
   color: #8a7f66;
   white-space: nowrap;
   overflow: hidden;
@@ -1138,12 +1138,12 @@ body.is-duel-page .masthead h1 .slash {
 
 /* —— 风味文本 & 卡底 —— */
 .card-flavor {
-  font-size: 8.4px;
+  font-size: 11.5px;
   line-height: 1.45;
   font-style: italic;
   color: #55503f;
   border-top: 1px solid #0002;
-  padding: 3px 2px 1px;
+  padding: 4px 3px 1px;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -1154,11 +1154,11 @@ body.is-duel-page .masthead h1 .slash {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 8px;
+  font-size: 11px;
   color: #6b6350;
-  padding: 3px 2px 0;
+  padding: 4px 3px 0;
 }
-.rarity-mark { font-weight: 900; letter-spacing: 1px; }
+.rarity-mark { font-weight: 900; letter-spacing: 1.5px; }
 .card[data-rarity='SR'] .rarity-mark { color: #a8821c; }
 .card[data-rarity='UR'] .rarity-mark {
   background: linear-gradient(90deg, #d33, #d90, #291, #16b, #92c);
@@ -1387,7 +1387,7 @@ body.is-export-preview-open {
 @media (max-width: 820px) {
   /* 纵向堆叠后 align-items 变为水平轴：改回 center 让卡牌与档案水平居中 */
   .arena { flex-direction: column; align-items: center; }
-  .dossier { width: 504px; max-width: 100%; }
+  .dossier { width: 366px; max-width: 100%; }
   .duel-shell {
     grid-template-columns: 1fr;
     gap: 22px;
