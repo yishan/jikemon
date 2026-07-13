@@ -1002,7 +1002,8 @@ function attachTilt(tiltEl, targetCardEl) {
     const r = targetCardEl.getBoundingClientRect();
     const px = (e.clientX - r.left) / r.width;
     const py = (e.clientY - r.top) / r.height;
-    targetCardEl.style.transform = `rotateY(${(px - 0.5) * 22}deg) rotateX(${(0.5 - py) * 16}deg)`;
+    // 内联 transform 会整体覆盖 CSS 的 scale(var(--m))，倾斜时必须带上缩放，否则卡牌跳回 504px 设计尺寸
+    targetCardEl.style.transform = `scale(var(--m, 1)) rotateY(${(px - 0.5) * 22}deg) rotateX(${(0.5 - py) * 16}deg)`;
     targetCardEl.style.setProperty('--hx', `${px * 100}%`);
     targetCardEl.style.setProperty('--hy', `${py * 100}%`);
   });
