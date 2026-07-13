@@ -153,15 +153,13 @@ test('export snapshot owns card data and tracks cancellation generations', async
   assert.equal(session.exportIsCurrent(4, 5), false);
 });
 
-test('card back renders a generic POKEJY texture design without profile data', async () => {
+test('card back renders a generic POKÉJI emblem design without profile data', async () => {
   const back = await loadCardBackModule();
   const markup = back.cardBackMarkup();
 
   assert.equal(typeof back.cardBackMarkup, 'function');
-  for (const letter of ['P', 'O', 'K', 'E', 'J', 'Y']) {
-    assert.match(markup, new RegExp(`>${letter}<`));
-  }
-  assert.match(markup, /POKÉJI/);
+  assert.match(markup, /card-back__emblem-core">即</);
+  assert.match(markup, /card-back__wordmark">POKÉJI</);
   assert.match(markup, /WEB\.POKEJI\.COM/);
   assert.equal(markup.includes('小明'), false);
   assert.equal(markup.includes('@xiaoming'), false);
