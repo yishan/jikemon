@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Pokéji logo">
+  <defs>
+    <radialGradient id="felt" cx="50%" cy="42%" r="62%">
+      <stop offset="0%" stop-color="#20452f"/>
+      <stop offset="55%" stop-color="#14301f"/>
+      <stop offset="100%" stop-color="#0e2417"/>
+    </radialGradient>
+  </defs>
+
+  <!-- dark green rounded-square card -->
+  <rect x="0" y="0" width="512" height="512" fill="url(#felt)"/>
+
+  <!-- pokeball emblem, centered -->
+  <g transform="translate(256 256) scale(6.6)">
+    <circle cx="0" cy="0" r="29" fill="#f6f2e9"/>
+    <path d="M-29 0A29 29 0 0 1 29 0Z" fill="#ffe411"/>
+    <circle cx="0" cy="0" r="29" fill="none" stroke="#1c1c1c" stroke-width="6"/>
+    <rect x="-28" y="-4" width="56" height="8" fill="#1c1c1c"/>
+    <circle cx="0" cy="0" r="11" fill="#f6f2e9" stroke="#1c1c1c" stroke-width="6"/>
+  </g>
+</svg>

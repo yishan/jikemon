@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 480" role="img" aria-label="Pokéji banner">
+  <defs>
+    <radialGradient id="bFelt" cx="30%" cy="10%" r="110%">
+      <stop offset="0%" stop-color="#1b3a2d"/>
+      <stop offset="60%" stop-color="#10241c"/>
+      <stop offset="100%" stop-color="#0b1a14"/>
+    </radialGradient>
+    <linearGradient id="bGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f8df8c"/>
+      <stop offset="50%" stop-color="#e8c565"/>
+      <stop offset="100%" stop-color="#c9a52e"/>
+    </linearGradient>
+    <linearGradient id="bBallTop" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffe411"/>
+      <stop offset="100%" stop-color="#f3c322"/>
+    </linearGradient>
+    <radialGradient id="bCore" cx="42%" cy="38%" r="70%">
+      <stop offset="0%" stop-color="#fffdf4"/>
+      <stop offset="100%" stop-color="#f0e7cf"/>
+    </radialGradient>
+    <radialGradient id="bAura" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="rgba(232,197,101,0.5)"/>
+      <stop offset="45%" stop-color="rgba(69,184,172,0.22)"/>
+      <stop offset="78%" stop-color="rgba(167,95,190,0.22)"/>
+      <stop offset="100%" stop-color="rgba(16,36,28,0)"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="480" fill="url(#bFelt)"/>
+
+  <!-- subtle sparkle band -->
+  <g fill="#fff6c9" opacity="0.5">
+    <path d="M980 70l7-5-2 11z"/>
+    <path d="M1080 120l6-4-2 9z"/>
+    <path d="M900 40l5-3-1 8z"/>
+    <path d="M150 400l6-4-2 9z"/>
+    <path d="M60 120l5-3-1 8z"/>
+  </g>
+
+  <!-- right-side pokeball with aura -->
+  <g transform="translate(940 240)">
+    <circle r="230" fill="url(#bAura)"/>
+    <g fill="none" stroke="#e8c565" stroke-opacity="0.16" stroke-width="3">
+      <circle r="168"/>
+      <circle r="196"/>
+    </g>
+    <circle r="140" fill="url(#bCore)" stroke="#1c1c1c" stroke-width="16"/>
+    <path d="M-140 0a140 140 0 0 1 280 0Z" fill="url(#bBallTop)"/>
+    <rect x="-140" y="-10" width="280" height="20" fill="#1c1c1c"/>
+    <path d="M-140 0a140 140 0 0 1 280 0Z" fill="none" stroke="#1c1c1c" stroke-width="16"/>
+    <circle r="48" fill="url(#bCore)" stroke="#1c1c1c" stroke-width="16"/>
+    <circle r="20" fill="#e8c565" stroke="#1c1c1c" stroke-width="7"/>
+    <path d="M0-14l7 14 14 7-14 7-7 14-7-14-14-7 14-7z" fill="#fffdf4" opacity="0.85"/>
+  </g>
+
+  <!-- left text block -->
+  <g font-family="'PingFang SC','Hiragino Sans GB','Noto Sans SC',Helvetica,Arial,sans-serif">
+    <text x="90" y="180" font-size="104" font-weight="800" letter-spacing="2" fill="url(#bGold)">Pokéji</text>
+    <text x="94" y="250" font-size="40" font-weight="700" fill="#fffdf4">即刻宝可梦图鉴</text>
+    <text x="94" y="312" font-size="30" font-weight="500" fill="#9db8a7">把你的即刻主页，变成一张宝可梦收藏卡牌</text>
+    <!-- domain hint chip -->
+    <g transform="translate(94 356)">
+      <rect width="470" height="52" rx="26" fill="rgba(232,197,101,0.10)" stroke="#e8c565" stroke-opacity="0.5"/>
+      <text x="26" y="34" font-size="24" font-family="ui-monospace,Menlo,monospace" fill="#e8c565">okjike.com → pokeji.com，回车即出卡</text>
+    </g>
+  </g>
+</svg>
