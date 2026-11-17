@@ -1,27 +1,50 @@
 /* ============ 收藏家的桌面 ============ */
 :root {
+  color-scheme: dark;
   --felt: #10241c;
   --felt-hi: #1b3a2d;
   --gold: #e8c565;
   --paper: #fffdf4;
   --ink: #2b2620;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  scrollbar-gutter: stable;
+}
 
 /* .arena 的 display:flex 会覆盖 UA 的 [hidden] 规则，这里强制生效 */
 [hidden] { display: none !important; }
 
 body {
   min-height: 100vh;
+  min-height: 100dvh;
   font-family: 'Noto Sans SC', sans-serif;
   color: var(--paper);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   background:
     radial-gradient(1200px 600px at 50% -10%, var(--felt-hi), transparent 70%),
     radial-gradient(900px 500px at 80% 110%, #142b36 0%, transparent 60%),
     var(--felt);
   position: relative;
 }
+
+button,
+.pokeball {
+  touch-action: manipulation;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid rgba(232, 197, 101, 0.92);
+  outline-offset: 3px;
+}
+
 /* 桌面噪点质感 */
 body::before {
   content: '';
@@ -51,6 +74,7 @@ body::before {
   position: relative;
   cursor: pointer;
   text-decoration: none;
+  transition: transform 0.2s var(--ease-out-expo);
 }
 .pokeball::after {
   content: '';
@@ -61,11 +85,16 @@ body::before {
   background: #f6f2e9;
   border: 3px solid #1c1c1c;
 }
-.pokeball:hover,
-.pokeball:focus-visible {
-  animation: pokeball-wobble 0.72s ease-in-out;
+@media (hover: hover) and (pointer: fine) {
+  .pokeball:hover {
+    animation: pokeball-wobble 0.72s ease-in-out;
+  }
+}
+.pokeball:active {
+  transform: scale(0.93);
 }
 .pokeball:focus-visible {
+  animation: pokeball-wobble 0.72s ease-in-out;
   outline: 2px solid rgba(232, 197, 101, 0.95);
   outline-offset: 6px;
 }
@@ -82,6 +111,7 @@ h1 {
   letter-spacing: 6px;
   color: var(--gold);
   text-shadow: 0 3px 0 #4a3a10, 0 8px 24px rgba(0, 0, 0, 0.5);
+  text-wrap: balance;
 }
 .sub {
   margin-top: 6px;
@@ -109,9 +139,13 @@ h1 {
   border: 1px solid rgba(232, 197, 101, 0.35);
   border-radius: 999px;
   outline: none;
-  transition: border-color 0.2s, background 0.2s;
+  transition: border-color 0.2s var(--ease-out-quart), background 0.2s var(--ease-out-quart), box-shadow 0.2s var(--ease-out-quart);
 }
-.seeker input:focus { border-color: var(--gold); background: rgba(255, 255, 255, 0.11); }
+.seeker input:focus {
+  border-color: var(--gold);
+  background: rgba(255, 255, 255, 0.11);
+  box-shadow: 0 0 0 3px rgba(232, 197, 101, 0.2);
+}
 .seeker.is-catching input {
   color: transparent;
   -webkit-text-fill-color: transparent; /* WebKit 禁用态文字不吃 color:transparent，需单独覆盖 */
@@ -323,15 +357,17 @@ body.is-duel-page .masthead h1 .slash {
   border: 1px dashed rgba(157, 184, 167, 0.28);
   border-radius: 999px;
   cursor: pointer;
-  transition: background 0.18s, border-color 0.18s, color 0.18s;
+  transition: background 0.18s var(--ease-out-quart), border-color 0.18s var(--ease-out-quart), color 0.18s var(--ease-out-quart), transform 0.14s var(--ease-out-quart);
 }
-.duel-swap-btn:hover {
-  color: var(--gold);
-  background: rgba(232, 197, 101, 0.08);
-  border-color: rgba(232, 197, 101, 0.38);
+@media (hover: hover) and (pointer: fine) {
+  .duel-swap-btn:hover {
+    color: var(--gold);
+    background: rgba(232, 197, 101, 0.08);
+    border-color: rgba(232, 197, 101, 0.38);
+  }
 }
 .duel-swap-btn:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
 }
 .duel-seeker.is-hidden {
   display: none;
@@ -396,10 +432,11 @@ body.is-duel-page .masthead h1 .slash {
 .duel-score span {
   font-size: 54px;
   font-weight: 900;
+  font-variant-numeric: tabular-nums;
   line-height: 1;
   text-align: center;
   text-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
-  transition: transform 0.22s ease, color 0.22s ease, text-shadow 0.22s ease;
+  transition: transform 0.24s var(--ease-spring), color 0.22s var(--ease-out-quart), text-shadow 0.22s var(--ease-out-quart);
 }
 .duel-score span:first-child {
   color: var(--gold);
@@ -438,6 +475,7 @@ body.is-duel-page .masthead h1 .slash {
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-wrap: balance;
 }
 .duel-board h2:empty {
   display: none;
@@ -449,6 +487,7 @@ body.is-duel-page .masthead h1 .slash {
   font-size: 12.5px;
   line-height: 1.55;
   text-align: center;
+  text-wrap: pretty;
 }
 .duel-rows {
   display: grid;
@@ -733,12 +772,15 @@ body.is-duel-page .masthead h1 .slash {
   z-index: 1; /* 盖在背后的 mesh 光效之上 */
   overflow: hidden;
   transform-style: preserve-3d;
-  transition: transform 0.15s ease-out;
+  transition: transform 0.48s var(--ease-out-expo);
   display: flex;
   flex-direction: column;
   user-select: none;
   transform: scale(var(--m, 1)); /* 窄屏等比缩放，桌面端 scale(1) 无副作用 */
   transform-origin: top left; /* 从左上角缩放，填满 .card-tilt 的缩放宽度 */
+}
+.card.is-tilting {
+  transition: transform 0.06s linear;
 }
 
 /* —— 稀有度卡框 —— */
@@ -1133,7 +1175,7 @@ body.is-duel-page .masthead h1 .slash {
 .move-main { flex: 1; min-width: 0; }
 .move-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .move-name { font-weight: 900; font-size: 19px; letter-spacing: 0.7px; }
-.move-dmg { font-family: 'M PLUS Rounded 1c', sans-serif; font-weight: 900; font-size: 23px; }
+.move-dmg { font-family: 'M PLUS Rounded 1c', sans-serif; font-weight: 900; font-variant-numeric: tabular-nums; font-size: 23px; }
 .move-text {
   font-size: 12.5px;
   line-height: 1.4;
@@ -1210,6 +1252,7 @@ body.is-duel-page .masthead h1 .slash {
   font-size: 13px;
   line-height: 1.7;
   backdrop-filter: blur(4px);
+  animation: panel-enter 0.36s var(--ease-out-expo) both;
 }
 .dossier h2 {
   display: flex;
@@ -1220,6 +1263,7 @@ body.is-duel-page .masthead h1 .slash {
   letter-spacing: 3px;
   color: var(--gold);
   margin-bottom: 12px;
+  text-wrap: balance;
 }
 .dossier h2 .dossier-en {
   font: 700 11px 'M PLUS Rounded 1c', 'Noto Sans SC', sans-serif;
@@ -1228,13 +1272,14 @@ body.is-duel-page .masthead h1 .slash {
 }
 .dossier dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 14px; }
 .dossier dt { color: #9db8a7; white-space: nowrap; }
-.dossier dd { color: var(--paper); }
+.dossier dd { color: var(--paper); font-variant-numeric: tabular-nums; }
 .dossier .verdict {
   margin-top: 14px;
   padding-top: 12px;
   border-top: 1px dashed rgba(232, 197, 101, 0.3);
   color: #d8cfae;
   font-size: 12.5px;
+  text-wrap: pretty;
 }
 
 /* ============ 动作 & 页脚 ============ */
@@ -1244,6 +1289,7 @@ body.is-duel-page .masthead h1 .slash {
   align-items: center;
   gap: 12px;
   margin-top: 34px;
+  animation: panel-enter 0.38s 0.06s var(--ease-out-expo) both;
 }
 .actions[hidden] { display: none; }
 .actions button {
@@ -1255,9 +1301,14 @@ body.is-duel-page .masthead h1 .slash {
   border: 1.5px solid var(--gold);
   border-radius: 999px;
   cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  transition: background 0.18s var(--ease-out-quart), color 0.18s var(--ease-out-quart), transform 0.14s var(--ease-out-quart);
 }
-.actions button:hover { background: var(--gold); color: #3a2503; }
+@media (hover: hover) and (pointer: fine) {
+  .actions button:hover { background: var(--gold); color: #3a2503; }
+}
+.actions button:active {
+  transform: scale(0.97);
+}
 
 /* 导出按钮 + 右侧下拉：胶囊按钮组 */
 .export-group {
@@ -1284,6 +1335,19 @@ body.is-duel-page .masthead h1 .slash {
   border: 1px solid rgba(232, 197, 101, 0.45);
   border-radius: 14px;
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+  transform-origin: top right;
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  transition:
+    opacity 0.16s var(--ease-out-expo),
+    transform 0.16s var(--ease-out-expo),
+    display 0.16s allow-discrete;
+}
+@starting-style {
+  .export-menu:not([hidden]) {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
 }
 .actions .export-menu button {
   display: flex;
@@ -1303,11 +1367,14 @@ body.is-duel-page .masthead h1 .slash {
   height: 15px;
   opacity: 0.85;
 }
-.actions .export-menu button:hover { background: var(--gold); color: #3a2503; }
+@media (hover: hover) and (pointer: fine) {
+  .actions .export-menu button:hover { background: var(--gold); color: #3a2503; }
+}
 
 body.is-export-preview-open {
   width: 100%;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   overscroll-behavior: none;
   touch-action: none;
@@ -1327,6 +1394,7 @@ body.is-export-preview-open {
   background:
     radial-gradient(1000px 520px at 50% -12%, var(--felt-hi), transparent 70%),
     var(--felt);
+  animation: preview-fade 0.2s var(--ease-out-expo) both;
 }
 .mobile-export-preview__hint {
   flex: none;
@@ -1353,6 +1421,10 @@ body.is-export-preview-open {
   font-size: 28px;
   line-height: 32px;
   cursor: pointer;
+  transition: background 0.16s var(--ease-out-quart), transform 0.14s var(--ease-out-quart);
+}
+.mobile-export-preview__close:active {
+  transform: scale(0.92);
 }
 .mobile-export-preview img {
   display: block;
@@ -1390,12 +1462,21 @@ body.is-export-preview-open {
   max-width: 480px;
   margin-left: auto;
   margin-right: auto;
+  text-wrap: pretty;
 }
 .colophon .disclaimer a {
   color: inherit;
 }
 
-/* 卡片入场动画 */
+/* 卡片入场与面板动效 */
+@keyframes panel-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes preview-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 /* 开卡揭晓：爆光 + 弹出，像拆开卡包 */
 @keyframes card-reveal {
   0% { opacity: 0; transform: translateY(8px) scale(calc(var(--m, 1) * 0.8)); filter: brightness(2.6) saturate(1.5); }
@@ -1462,5 +1543,30 @@ body.is-export-preview-open {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pokeball:hover,
+  .pokeball:focus-visible,
+  .card-tilt::before,
+  .open-btn,
+  .catch-ball,
+  .seeker-loading::after,
+  .card[data-rarity='UR'],
+  .stage-chip--mega,
+  .card.reveal,
+  .dossier,
+  .actions,
+  .mobile-export-preview {
+    animation: none !important;
+  }
+  .card,
+  .export-menu,
+  .duel-score span,
+  .duel-row,
+  .actions button,
+  .duel-swap-btn {
+    transition-duration: 0.01ms !important;
   }
 }

@@ -998,17 +998,39 @@ function bumpScore(el) {
 
 function attachTilt(tiltEl, targetCardEl) {
   if (!tiltEl || !targetCardEl) return;
+  const finePointer = window.matchMedia?.('(hover: hover) and (pointer: fine)');
+  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+  let frame = 0;
+  let lastX = 0.5;
+  let lastY = 0.5;
+
   tiltEl.addEventListener('mousemove', (e) => {
+    if (finePointer && !finePointer.matches) return;
+    if (reducedMotion && reducedMotion.matches) return;
     const r = targetCardEl.getBoundingClientRect();
-    const px = (e.clientX - r.left) / r.width;
-    const py = (e.clientY - r.top) / r.height;
-    // 内联 transform 会整体覆盖 CSS 的 scale(var(--m))，倾斜时必须带上缩放，否则卡牌跳回 504px 设计尺寸
-    targetCardEl.style.transform = `scale(var(--m, 1)) rotateY(${(px - 0.5) * 22}deg) rotateX(${(0.5 - py) * 16}deg)`;
-    targetCardEl.style.setProperty('--hx', `${px * 100}%`);
-    targetCardEl.style.setProperty('--hy', `${py * 100}%`);
+    if (!r.width || !r.height) return;
+    lastX = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+    lastY = Math.max(0, Math.min(1, (e.clientY - r.top) / r.height));
+    if (frame) return;
+    frame = requestAnimationFrame(() => {
+      frame = 0;
+      targetCardEl.classList.add('is-tilting');
+      // 内联 transform 会整体覆盖 CSS 的 scale(var(--m))，倾斜时必须带上缩放，否则卡牌跳回 504px 设计尺寸
+      targetCardEl.style.transform = `scale(var(--m, 1)) rotateY(${(lastX - 0.5) * 22}deg) rotateX(${(0.5 - lastY) * 16}deg)`;
+      targetCardEl.style.setProperty('--hx', `${lastX * 100}%`);
+      targetCardEl.style.setProperty('--hy', `${lastY * 100}%`);
+    });
   });
+
   tiltEl.addEventListener('mouseleave', () => {
+    if (frame) {
+      cancelAnimationFrame(frame);
+      frame = 0;
+    }
+    targetCardEl.classList.remove('is-tilting');
     targetCardEl.style.transform = '';
+    targetCardEl.style.removeProperty('--hx');
+    targetCardEl.style.removeProperty('--hy');
   });
 }
 
@@ -1785,15 +1807,25 @@ function flashStatus(msg) {
   }, 2400);
 }
 
-function toggleExportMenu(open) {
+function toggleExportMenu(open, { focusFirst = false } = {}) {
   const next = open ?? exportMenu.hidden;
   exportMenu.hidden = !next;
   exportMenuBtn.setAttribute('aria-expanded', String(next));
+  if (next && focusFirst) {
+    exportMenu.querySelector('[role="menuitem"]')?.focus();
+  }
 }
 
 exportMenuBtn?.addEventListener('click', (e) => {
   e.stopPropagation();
   toggleExportMenu();
+});
+
+exportMenuBtn?.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    toggleExportMenu(true, { focusFirst: true });
+  }
 });
 
 document.addEventListener('click', (e) => {
@@ -1802,7 +1834,23 @@ document.addEventListener('click', (e) => {
 });
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && exportMenu && !exportMenu.hidden) toggleExportMenu(false);
+  if (!exportMenu || exportMenu.hidden) return;
+  if (e.key === 'Escape') {
+    const insideMenu = exportMenu.contains(document.activeElement);
+    toggleExportMenu(false);
+    if (insideMenu) exportMenuBtn?.focus();
+    return;
+  }
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    const items = [...exportMenu.querySelectorAll('[role="menuitem"]')];
+    if (!items.length) return;
+    e.preventDefault();
+    const idx = items.indexOf(document.activeElement);
+    const nextIdx = e.key === 'ArrowDown'
+      ? (idx + 1) % items.length
+      : (idx - 1 + items.length) % items.length;
+    items[nextIdx]?.focus();
+  }
 });
 
 // 复制图片：优先把 blob Promise 直接交给 ClipboardItem（Safari 需在用户手势内同步调用），
